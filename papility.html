@@ -5,41 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Papillon Agility Course</title>
   <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/phaser@4.1.0/dist/phaser.min.js"></script>
 </head>
 <body>
-  <canvas id="game"></canvas>
-
-  <div class="hud" id="hud">
-    <div><span class="hud-label">Obstacle</span><br><span class="hud-value" id="obsCount">0 / 16</span></div>
-    <div><span class="hud-label">Faults</span><br><span class="hud-value" style="color:#d9534f" id="faults">0</span></div>
-    <div><span class="hud-label">Time</span><br><span class="hud-value hud-timer" id="timer">--</span></div>
-  </div>
-
-  <div class="next-obs" id="nextObs">
-    <span class="hud-label">Next</span><br>
-    <span id="nextObsName">1 - Jump</span>
-  </div>
-
-  <div id="startScreen">
-    <h1>Papillon Agility Course</h1>
-    <div class="subtitle">A1(1) &middot; 16 obstacles &middot; 173 m</div>
-    <div class="instructions">
-      <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> or Arrow keys to run<br>
-      <kbd>Space</kbd> to boost (speed burst)<br>
-      Run through each obstacle in numbered order<br>
-      Timer starts at obstacle #1, stops at finish gate<br>
-      Knocked bar or wrong order = fault (+5 s penalty)<br>
-      Boost clears jump obstacles automatically!
-    </div>
-    <button id="startBtn">Start Run!</button>
-  </div>
-
-  <div id="finishScreen">
-    <h1 id="finishTitle">Course Complete!</h1>
-    <div class="stats" id="finishStats"></div>
-    <button id="restartBtn">Run Again</button>
-  </div>
-
   <script src="game.js"></script>
 </body>
 </html>
