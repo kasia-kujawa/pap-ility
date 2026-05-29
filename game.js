@@ -122,6 +122,10 @@ class GameScene extends Phaser.Scene {
     this._labelTexts = [];
     this._finishGateText = null;
 
+    // Ghost recording: record player path for best-run replay
+    this._recordedPath = [];
+    this._ghostRecordAccum = 0;
+
     this.currentObs = 0;
     this.faultsCount = 0;
     this.timerStarted = false;
@@ -177,6 +181,7 @@ class GameScene extends Phaser.Scene {
     this.prevModifiers = new Set();
     this.courseGrid = this.createCourseGrid();
     this.optimalPaths = this.computeOptimalPaths();
+    this.ghostPath = this.game._bestGhostPath || null;
     this.guideArrowGfx = this.add.graphics();
 
     this.createHUD();
@@ -314,6 +319,7 @@ class GameScene extends Phaser.Scene {
     this.game._lastRun = { time: this.finishTime, faults: this.faultsCount, total: tot };
     if (!this.game._bestRun || tot < this.game._bestRun.total) {
       this.game._bestRun = { time: this.finishTime, faults: this.faultsCount, total: tot };
+      this.game._bestGhostPath = this._recordedPath.slice();
     }
 
     const lines = [
@@ -719,8 +725,6 @@ class GameScene extends Phaser.Scene {
       paths.push(path);
     }
     this.optimalPaths = paths;
-    const fullPath = this.buildTimedGhostPath();
-    this.ghostPath = fullPath;
     return paths;
   }
 
@@ -1233,6 +1237,21 @@ class GameScene extends Phaser.Scene {
         size: 2 + Math.random() * 2
       });
     }
+
+    // Record path for ghost replay (~10 samples/sec)
+    if (this.timerStarted && !this.finished) {
+      this._ghostRecordAccum += dtMs;
+      if (this._ghostRecordAccum >= 100) {
+        this._ghostRecordAccum -= 100;
+        this._recordedPath.push({
+          t: this.elapsedTime,
+          x: this.dogBody.x,
+          y: this.dogBody.y,
+          angle: ds.angle,
+          boosting: ds.boosting
+        });
+      }
+    }
   }
 
   getSpeedMultiplier() {
@@ -1332,13 +1351,18 @@ class GameScene extends Phaser.Scene {
     }
     const a = path[i], b = path[i + 1];
     const p = (t - a.t) / (b.t - a.t);
-    // Linear interpolate ghost position between optimal-path waypoints
+    // Linear interpolate ghost position between recorded waypoints
     this.ghostState.x = a.x + (b.x - a.x) * p;
     this.ghostState.y = a.y + (b.y - a.y) * p;
-    const dx = b.x - a.x;
-    const dy = b.y - a.y;
-    this.ghostState.angle = Math.atan2(dy, dx);
-    this.ghostState.boosting = false;
+    // Use recorded angle (interpolated) and boosting from nearest waypoint
+    if (a.angle !== undefined) {
+      this.ghostState.angle = a.angle + (b.angle - a.angle) * p;
+    } else {
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      this.ghostState.angle = Math.atan2(dy, dx);
+    }
+    this.ghostState.boosting = p < 0.5 ? !!a.boosting : !!b.boosting;
     this.ghostState.visible = true;
   }
 
