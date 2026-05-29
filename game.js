@@ -326,7 +326,6 @@ class GameScene extends Phaser.Scene {
   showFinish() {
     this._finishElements.forEach(el => el.setVisible(true));
     this.finishTitle.setText(this.faultsCount === 0 ? 'Clean Run!' : 'Course Complete!');
-
     const pen = this.faultsCount * 5;
     const tot = this.finishTime + pen;
     this.finishStats.setText([
@@ -334,6 +333,7 @@ class GameScene extends Phaser.Scene {
       `Faults: ${this.faultsCount} (+${pen.toFixed(1)}s penalty)`,
       `Total: ${tot.toFixed(2)}s`
     ]);
+    this.scale.refresh();
   }
 
   restartGame() {
