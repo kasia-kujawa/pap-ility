@@ -31,6 +31,23 @@ const courseObs = [
 ];
 
 const finishGate = { cx: 290, cy: 770, angle: -0.45 };
+
+const courseModifiers = [
+  { type: 'mud',    cx: 950, cy: 780, rx: 60, ry: 30, angle: 0.30 },
+  { type: 'mud',    cx: 720, cy: 380, rx: 50, ry: 25, angle: -0.20 },
+  { type: 'mud',    cx: 350, cy: 620, rx: 45, ry: 30, angle: 0.50 },
+  { type: 'wetGrass', cx: 550, cy: 400, rx: 80, ry: 40, angle: -0.10 },
+  { type: 'wetGrass', cx: 200, cy: 500, rx: 60, ry: 35, angle: 0.80 },
+  { type: 'kids',   cx: 420, cy: 280, rx: 40, ry: 40, angle: 0 },
+  { type: 'kids',   cx: 850, cy: 180, rx: 40, ry: 40, angle: 0 },
+];
+
+const MODIFIER_COLORS = {
+  mud:      { fill: 0x5a3a1a, label: 'MUD',      labelColor: '#8B4513' },
+  wetGrass: { fill: 0x3a7a2a, label: 'WET GRASS', labelColor: '#4a7c59' },
+  kids:     { fill: 0x000000, label: 'KIDS',     labelColor: '#ff69b4' },
+};
+
 const coursePath = courseObs.map(o => ({ x: o.cx, y: o.cy }));
 coursePath.push({ x: finishGate.cx, y: finishGate.cy });
 
@@ -39,6 +56,53 @@ const BASE_ACCEL = 21;
 const BOOST_DURATION_MS = 500;
 const BOOST_COOLDOWN_MS = 3000;
 const BOOST_MULTIPLIER = 2.0;
+
+class GhostRecorder {
+  constructor() {
+    this.snapshots = [];
+    this.recording = false;
+    this.startTime = 0;
+  }
+
+  start(now) {
+    this.snapshots = [];
+    this.recording = true;
+    this.startTime = now;
+  }
+
+  record(state, now) {
+    if (!this.recording) return;
+    const t = (now - this.startTime) / 1000;
+    this.snapshots.push({
+      t,
+      x: state.x,
+      y: state.y,
+      angle: state.angle,
+      boosting: state.boosting
+    });
+  }
+
+  stop() {
+    this.recording = false;
+    return this.snapshots;
+  }
+
+  static save(run) {
+    localStorage.setItem('papility_ghost_v1_A1(1)', JSON.stringify(run));
+  }
+
+  static load() {
+    const raw = localStorage.getItem('papility_ghost_v1_A1(1)');
+    if (!raw) return null;
+    try {
+      const run = JSON.parse(raw);
+      if (run.version !== 1) return null;
+      return run;
+    } catch (e) {
+      return null;
+    }
+  }
+}
 
 class StartScene extends Phaser.Scene {
   constructor() {
@@ -115,11 +179,15 @@ class GameScene extends Phaser.Scene {
       angle: Math.PI
     };
 
+    this.ghostRun = GhostRecorder.load();
+    this.ghostState = { x: 0, y: 0, angle: 0, boosting: false, visible: false };
+
     this.particles = [];
     this.pawPrints = [];
 
     this.drawGrass();
     this.drawCoursePath();
+    this.createModifierGraphics();
     this.createFinishGateGraphics();
 
     this.obstacleGraphics = [];
@@ -142,6 +210,10 @@ class GameScene extends Phaser.Scene {
     this.pawGfx = this.add.graphics();
     this.particleGfx = this.add.graphics();
     this.distanceLineGfx = this.add.graphics();
+    this.ghostGfx = this.add.graphics();
+    this.kidsHalo = this.add.graphics();
+    this.prevModifiers = new Set();
+    this.ghostRecorder = new GhostRecorder();
     this.guideArrowGfx = this.add.graphics();
 
     this.createHUD();
@@ -171,6 +243,8 @@ class GameScene extends Phaser.Scene {
     this.faultsText = this.add.text(88, 34, '0', { fontSize: '22px', fontFamily: 'Segoe UI, Arial, sans-serif', color: '#d9534f', fontStyle: 'bold' }).setDepth(100);
     this.add.text(148, 20, 'TIME', { fontSize: '11px', fontFamily: 'Segoe UI, Arial, sans-serif', color: '#666666', fontStyle: 'bold' }).setDepth(100);
     this.timerText = this.add.text(148, 34, '--', { fontSize: '22px', fontFamily: 'Segoe UI, Arial, sans-serif', color: '#d9534f', fontStyle: 'bold' }).setDepth(100);
+
+    this.modifierLabelText = this.add.text(CW / 2, 80, '', { fontSize: '18px', fontFamily: 'Segoe UI, Arial, sans-serif', color: '#ffffff', fontStyle: 'bold' }).setOrigin(0.5).setDepth(100).setVisible(false);
 
     this.add.rectangle(CW - 80, 45, 150, 45, 0xffffff, 0.95).setStrokeStyle(1, 0x000000, 0.1).setDepth(100);
     this.add.text(CW - 150, 25, 'NEXT', { fontSize: '11px', fontFamily: 'Segoe UI, Arial, sans-serif', color: '#666666', fontStyle: 'bold' }).setDepth(100);
@@ -241,9 +315,10 @@ class GameScene extends Phaser.Scene {
     this.restartBtn = this.add.rectangle(CW / 2, 540, 200, 50, 0xffd200, 1).setStrokeStyle(2, 0xf7971e, 1).setDepth(201).setVisible(false).setInteractive({ useHandCursor: true });
     this.restartBtnText = this.add.text(CW / 2, 540, 'Run Again', {
       fontSize: '22px', fontFamily: 'Segoe UI, Arial, sans-serif', color: '#333333', fontStyle: 'bold'
-    }).setOrigin(0.5).setDepth(202).setVisible(false);
+    }).setOrigin(0.5).setDepth(202).setVisible(false).setInteractive({ useHandCursor: true });
 
     this.restartBtn.on('pointerdown', () => this.restartGame());
+    this.restartBtnText.on('pointerdown', () => this.restartGame());
 
     this._finishElements = [this.finishOverlay, this.finishTitle, this.finishStats, this.restartBtn, this.restartBtnText];
   }
@@ -782,6 +857,53 @@ class GameScene extends Phaser.Scene {
     });
   }
 
+  drawGhost() {
+    const g = this.ghostGfx;
+    const gs = this.ghostState;
+    if (!gs.visible) {
+      g.clear();
+      return;
+    }
+    const x = gs.x;
+    const y = gs.y;
+    const sz = 20;
+    const angle = gs.angle;
+
+    g.clear();
+
+    if (gs.boosting) {
+      g.fillStyle(0xff8c00, 0.15);
+      g.fillCircle(x, y, sz * 2.2);
+      g.fillStyle(0xffc800, 0.25);
+      g.fillCircle(x, y, sz * 1.1);
+    }
+
+    g.save();
+    g.translateCanvas(x, y);
+    g.rotateCanvas(angle + Math.PI / 2);
+
+    // Simplified ghost dog body — semi-transparent cool blue-grey
+    g.fillStyle(0x88aabb, 0.4);
+    g.fillEllipse(0, sz * 0.05, sz * 0.48 * 2, sz * 0.6 * 2);
+    g.fillStyle(0x99bbcc, 0.35);
+    g.fillEllipse(0, -sz * 0.55, sz * 0.42 * 2, sz * 0.22 * 2);
+    g.fillStyle(0xaaccdd, 0.3);
+    g.fillEllipse(0, -sz * 0.75, sz * 0.32 * 2, sz * 0.28 * 2);
+
+    // Ears / tail simplified
+    g.fillStyle(0x77aabb, 0.3);
+    g.fillEllipse(-sz * 0.3, -sz * 0.35, sz * 0.15 * 2, sz * 0.25 * 2);
+    g.fillEllipse(sz * 0.3, -sz * 0.35, sz * 0.15 * 2, sz * 0.25 * 2);
+    g.fillEllipse(0, sz * 0.9, sz * 0.4 * 2, sz * 0.7 * 2);
+
+    g.restore();
+
+    // Trailing glow circles
+    g.fillStyle(0xaaccdd, 0.08);
+    g.fillCircle(x - Math.cos(angle) * 12, y - Math.sin(angle) * 12, sz * 0.6);
+    g.fillCircle(x - Math.cos(angle) * 22, y - Math.sin(angle) * 22, sz * 0.4);
+  }
+
   drawDistanceLine() {
     const g = this.distanceLineGfx;
     g.clear();
@@ -820,6 +942,58 @@ class GameScene extends Phaser.Scene {
     g.restore();
   }
 
+  createModifierGraphics() {
+    this.modifierGraphics = [];
+    this.kidsGraphics = [];
+    courseModifiers.forEach(mod => {
+      const g = this.add.graphics();
+      this.drawModifier(g, mod);
+      this.modifierGraphics.push(g);
+      if (mod.type === 'kids') {
+        const kg = this.add.graphics();
+        this.drawKids(kg, mod);
+        this.kidsGraphics.push(kg);
+      }
+    });
+  }
+
+  drawModifier(g, mod) {
+    g.clear();
+    const col = MODIFIER_COLORS[mod.type];
+    if (!col) return;
+    g.fillStyle(col.fill, mod.type === 'kids' ? 0 : 0.6);
+    g.save();
+    g.translateCanvas(mod.cx, mod.cy);
+    g.rotateCanvas(mod.angle);
+    g.fillEllipse(0, 0, mod.rx * 2, mod.ry * 2);
+    if (mod.type === 'wetGrass') {
+      g.fillStyle(0xffffff, 0.15);
+      for (let i = -mod.rx + 10; i < mod.rx; i += 18) {
+        g.fillRect(i, -mod.ry + 2, 10, mod.ry * 2 - 4);
+      }
+    }
+    g.restore();
+  }
+
+  drawKids(g, mod) {
+    g.clear();
+    const kids = [
+      { x: -12, y: -8, color: 0xff5555 },
+      { x:  12, y: -8, color: 0x55aaff },
+      { x:   0, y:  8, color: 0xffdd44 },
+    ];
+    kids.forEach(k => {
+      const kx = mod.cx + k.x;
+      const ky = mod.cy + k.y;
+      g.fillStyle(0xffccaa, 1);
+      g.fillCircle(kx, ky - 6, 3);
+      g.fillStyle(k.color, 1);
+      g.fillRect(kx - 2, ky - 2, 4, 5);
+      g.fillStyle(0x333333, 1);
+      g.fillRect(kx - 2, ky + 3, 4, 3);
+    });
+  }
+
   updateDog(delta) {
     const ds = this.dogState;
     const body = this.dogBody.body;
@@ -840,8 +1014,9 @@ class GameScene extends Phaser.Scene {
     }
     if (ds.boostCooldown > 0) ds.boostCooldown -= dtMs;
 
-    const effMaxSpeed = ds.boosting ? BASE_MAX_SPEED * BOOST_MULTIPLIER : BASE_MAX_SPEED;
-    const effAccel = ds.boosting ? BASE_ACCEL * BOOST_MULTIPLIER : BASE_ACCEL;
+    const speedMul = this.getSpeedMultiplier();
+    const effMaxSpeed = BASE_MAX_SPEED * speedMul * (ds.boosting ? BOOST_MULTIPLIER : 1);
+    const effAccel = BASE_ACCEL * speedMul * (ds.boosting ? BOOST_MULTIPLIER : 1);
 
     const up = this.cursors.up.isDown || this.cursors.w.isDown;
     const dn = this.cursors.down.isDown || this.cursors.s.isDown;
@@ -893,6 +1068,111 @@ class GameScene extends Phaser.Scene {
     }
   }
 
+  getSpeedMultiplier() {
+    const x = this.dogBody.x;
+    const y = this.dogBody.y;
+    let mul = 1.0;
+    for (const mod of courseModifiers) {
+      const dx = x - mod.cx;
+      const dy = y - mod.cy;
+      const cos = Math.cos(-mod.angle);
+      const sin = Math.sin(-mod.angle);
+      const lx = dx * cos - dy * sin;
+      const ly = dx * sin + dy * cos;
+      if ((lx / mod.rx) ** 2 + (ly / mod.ry) ** 2 <= 1) {
+        const modMul = mod.type === 'mud' ? 0.45 : mod.type === 'wetGrass' ? 0.65 : 0.75;
+        if (modMul < mul) mul = modMul;
+      }
+    }
+    return mul;
+  }
+
+  updateModifierEffects(delta) {
+    const current = new Set();
+    for (const mod of courseModifiers) {
+      const dx = this.dogBody.x - mod.cx;
+      const dy = this.dogBody.y - mod.cy;
+      const cos = Math.cos(-mod.angle);
+      const sin = Math.sin(-mod.angle);
+      const lx = dx * cos - dy * sin;
+      const ly = dx * sin + dy * cos;
+      if ((lx / mod.rx) ** 2 + (ly / mod.ry) ** 2 <= 1) {
+        current.add(mod.type);
+      }
+    }
+
+    // Mud splash on entry
+    if (current.has('mud') && !this.prevModifiers.has('mud')) {
+      for (let i = 0; i < 12; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const sp = 80 + Math.random() * 120;
+        this.particles.push({
+          x: this.dogBody.x, y: this.dogBody.y,
+          vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+          life: 300, maxLife: 300,
+          color: Math.random() < 0.5 ? '#5a3a1a' : '#8B4513',
+          size: 2 + Math.random() * 3
+        });
+      }
+    }
+
+    // Kids proximity halo
+    this.kidsHalo.clear();
+    if (current.has('kids')) {
+      for (const mod of courseModifiers) {
+        if (mod.type !== 'kids') continue;
+        this.kidsHalo.lineStyle(2, 0xff69b4, 0.4);
+        this.kidsHalo.strokeEllipse(mod.cx, mod.cy, mod.rx * 2, mod.ry * 2);
+      }
+    }
+
+    // Update HUD label
+    if (current.has('mud')) {
+      this.modifierLabelText.setText('MUD');
+      this.modifierLabelText.setColor('#8B4513');
+      this.modifierLabelText.setVisible(true);
+    } else if (current.has('wetGrass')) {
+      this.modifierLabelText.setText('WET GRASS');
+      this.modifierLabelText.setColor('#4a7c59');
+      this.modifierLabelText.setVisible(true);
+    } else if (current.has('kids')) {
+      this.modifierLabelText.setText('KIDS');
+      this.modifierLabelText.setColor('#ff69b4');
+      this.modifierLabelText.setVisible(true);
+    } else {
+      this.modifierLabelText.setVisible(false);
+    }
+
+    this.prevModifiers = current;
+  }
+
+  updateGhost() {
+    if (!this.ghostRun || !this.timerStarted || this.finished) {
+      this.ghostState.visible = false;
+      return;
+    }
+    const t = this.elapsedTime;
+    const snaps = this.ghostRun.snapshots;
+    if (!snaps || snaps.length === 0) {
+      this.ghostState.visible = false;
+      return;
+    }
+    let i = 0;
+    while (i < snaps.length - 1 && snaps[i + 1].t < t) i++;
+    if (i >= snaps.length - 1) {
+      this.ghostState.visible = false;
+      return;
+    }
+    const a = snaps[i], b = snaps[i + 1];
+    const p = (t - a.t) / (b.t - a.t);
+    // Linear interpolate ghost position and angle between snapshots
+    this.ghostState.x = a.x + (b.x - a.x) * p;
+    this.ghostState.y = a.y + (b.y - a.y) * p;
+    this.ghostState.angle = a.angle + (b.angle - a.angle) * p;
+    this.ghostState.boosting = b.boosting;
+    this.ghostState.visible = true;
+  }
+
   checkObstacle() {
     if (this.currentObs < courseObs.length) {
       const tgt = courseObs[this.currentObs];
@@ -937,6 +1217,7 @@ class GameScene extends Phaser.Scene {
     if (ob.num === 1 && !this.timerStarted) {
       this.timerStarted = true;
       this.startTime = this.time.now;
+      this.ghostRecorder.start(this.time.now);
     }
 
     this.checkAllDone();
@@ -950,6 +1231,25 @@ class GameScene extends Phaser.Scene {
     }
   }
 
+  evaluateGhostRun() {
+    const snapshots = this.ghostRecorder.stop();
+    const newRun = {
+      version: 1,
+      courseName: 'A1(1)',
+      finishTime: this.finishTime,
+      totalTime: this.finishTime + this.faultsCount * 5,
+      faults: this.faultsCount,
+      snapshots
+    };
+    const stored = GhostRecorder.load();
+    if (!stored || newRun.totalTime < stored.totalTime) {
+      GhostRecorder.save(newRun);
+      this.bestTime = newRun.totalTime;
+    } else {
+      this.bestTime = stored.totalTime;
+    }
+  }
+
   checkFinishGate() {
     if (!this.allDone || this.finished) return;
     const dx = this.dogBody.x - finishGate.cx;
@@ -957,6 +1257,7 @@ class GameScene extends Phaser.Scene {
     if (Math.sqrt(dx * dx + dy * dy) < 40) {
       this.finished = true;
       this.finishTime = this.elapsedTime;
+      this.evaluateGhostRun();
       this.showFinish();
     }
   }
@@ -982,6 +1283,7 @@ class GameScene extends Phaser.Scene {
 
     if (!this.finished) {
       this.updateDog(delta);
+      this.updateModifierEffects(delta);
       this.checkObstacle();
       this.checkFinishGate();
       this.updateParticles(delta);
@@ -989,12 +1291,20 @@ class GameScene extends Phaser.Scene {
       if (this.timerStarted && !this.finished) {
         this.elapsedTime = (time - this.startTime) / 1000;
         this.timerText.setText(this.elapsedTime.toFixed(2));
+        this.ghostRecorder.record({
+          x: this.dogBody.x,
+          y: this.dogBody.y,
+          angle: this.dogBody.body.angle,
+          boosting: this.dogState.boosting
+        }, time);
       }
     } else {
       this.updateParticles(delta);
     }
 
     this.drawPapillon();
+    this.updateGhost();
+    this.drawGhost();
     this.drawPawPrints();
     this.drawParticles();
     this.drawDistanceLine();
