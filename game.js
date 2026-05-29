@@ -320,6 +320,16 @@ class GameScene extends Phaser.Scene {
     this.restartBtn.on('pointerdown', () => this.restartGame());
     this.restartBtnText.on('pointerdown', () => this.restartGame());
 
+    // Fallback: scene-level pointer check for Phaser 4 scale manager hit-area issue
+    this.input.on('pointerdown', (pointer) => {
+      if (!this.finished) return;
+      const bx = CW / 2, by = 540, bw = 200, bh = 50;
+      if (pointer.x >= bx - bw / 2 && pointer.x <= bx + bw / 2 &&
+          pointer.y >= by - bh / 2 && pointer.y <= by + bh / 2) {
+        this.restartGame();
+      }
+    });
+
     this._finishElements = [this.finishOverlay, this.finishTitle, this.finishStats, this.restartBtn, this.restartBtnText];
   }
 
