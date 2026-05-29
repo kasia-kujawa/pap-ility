@@ -112,6 +112,16 @@ class GameScene extends Phaser.Scene {
   }
 
   create() {
+    // Clean up DOM listener from any previous run
+    this._cleanupDomRestart();
+
+    // Remove DOM listener on scene shutdown (e.g. when transitioning away)
+    this.events.once('shutdown', () => this._cleanupDomRestart());
+
+    // Clear cached game object references from previous run (destroyed on restart)
+    this._labelTexts = [];
+    this._finishGateText = null;
+
     this.currentObs = 0;
     this.faultsCount = 0;
     this.timerStarted = false;
@@ -265,23 +275,30 @@ class GameScene extends Phaser.Scene {
       align: 'center', lineSpacing: 10
     }).setOrigin(0.5).setDepth(201).setVisible(false);
 
-    this.restartBtn = this.add.rectangle(CW / 2, 540, 200, 50, 0xffd200, 1).setStrokeStyle(2, 0xf7971e, 1).setDepth(201).setVisible(false).setInteractive({ useHandCursor: true });
-    this.restartBtnText = this.add.text(CW / 2, 540, 'Run Again', {
+    this.restartBtn = this.add.rectangle(CW / 2, 600, 200, 50, 0xffd200, 1).setStrokeStyle(2, 0xf7971e, 1).setDepth(201).setVisible(false).setInteractive({ useHandCursor: true });
+    this.restartBtnText = this.add.text(CW / 2, 600, 'Run Again', {
       fontSize: '22px', fontFamily: 'Segoe UI, Arial, sans-serif', color: '#333333', fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(202).setVisible(false).setInteractive({ useHandCursor: true });
 
     this.restartBtn.on('pointerdown', () => this.restartGame());
     this.restartBtnText.on('pointerdown', () => this.restartGame());
 
-    // Fallback: scene-level pointer check for Phaser 4 scale manager hit-area issue
-    this.input.on('pointerdown', (pointer) => {
+    // DOM-level fallback: Phaser 4 setInteractive hit-testing breaks under zoomed cameras.
+    // Convert screen click → world coords manually and check against button bounds.
+    this._domRestart = (e) => {
       if (!this.finished) return;
-      const bx = CW / 2, by = 540, bw = 200, bh = 50;
-      if (pointer.x >= bx - bw / 2 && pointer.x <= bx + bw / 2 &&
-          pointer.y >= by - bh / 2 && pointer.y <= by + bh / 2) {
+      const canvas = this.game.canvas;
+      const rect = canvas.getBoundingClientRect();
+      // Canvas renders CW*RES x CH*RES pixels mapped to rect size
+      const wx = ((e.clientX - rect.left) / rect.width) * CW;
+      const wy = ((e.clientY - rect.top) / rect.height) * CH;
+      const bx = CW / 2, by = 600, bw = 200, bh = 50;
+      if (wx >= bx - bw / 2 && wx <= bx + bw / 2 &&
+          wy >= by - bh / 2 && wy <= by + bh / 2) {
         this.restartGame();
       }
-    });
+    };
+    this.game.canvas.addEventListener('click', this._domRestart);
 
     this._finishElements = [this.finishOverlay, this.finishTitle, this.finishStats, this.restartBtn, this.restartBtnText];
   }
@@ -291,16 +308,38 @@ class GameScene extends Phaser.Scene {
     this.finishTitle.setText(this.faultsCount === 0 ? 'Clean Run!' : 'Course Complete!');
     const pen = this.faultsCount * 5;
     const tot = this.finishTime + pen;
-    this.finishStats.setText([
+
+    // Save run result for display on next run and future ghost feature
+    const prev = this.game._lastRun;
+    this.game._lastRun = { time: this.finishTime, faults: this.faultsCount, total: tot };
+    if (!this.game._bestRun || tot < this.game._bestRun.total) {
+      this.game._bestRun = { time: this.finishTime, faults: this.faultsCount, total: tot };
+    }
+
+    const lines = [
       `Time: ${this.finishTime.toFixed(2)}s`,
       `Faults: ${this.faultsCount} (+${pen.toFixed(1)}s penalty)`,
       `Total: ${tot.toFixed(2)}s`
-    ]);
+    ];
+    if (prev) {
+      lines.push(``, `Last run: ${prev.total.toFixed(2)}s`);
+    }
+    if (this.game._bestRun) {
+      lines.push(`Best run: ${this.game._bestRun.total.toFixed(2)}s`);
+    }
+    this.finishStats.setText(lines);
     this.scale.refresh();
   }
 
+  _cleanupDomRestart() {
+    if (this._domRestart) {
+      this.game.canvas.removeEventListener('click', this._domRestart);
+      this._domRestart = null;
+    }
+  }
+
   restartGame() {
-    this.scene.restart();
+    this._wantsRestart = true;
   }
 
   drawGrass() {
@@ -1385,6 +1424,12 @@ class GameScene extends Phaser.Scene {
   }
 
   update(time, delta) {
+    if (this._wantsRestart) {
+      this._wantsRestart = false;
+      this.scene.restart();
+      return;
+    }
+
     if (!delta || delta > 200) return;
 
     this.redrawObstacles();
