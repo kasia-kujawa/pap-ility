@@ -57,6 +57,11 @@ const BOOST_DURATION_MS = 500;
 const BOOST_COOLDOWN_MS = 3000;
 const BOOST_MULTIPLIER = 2.0;
 
+// ── Game Config ──────────────────────────────────────────────────────────────
+// Credentials are loaded from window.GAME_CONFIG (set in config.js).
+// Do NOT put real secrets in this file.
+const WORKER_URL = (typeof window !== 'undefined' && window.GAME_CONFIG?.workerUrl) || '';
+
 class StartScene extends Phaser.Scene {
   constructor() {
     super('StartScene');
@@ -100,9 +105,115 @@ class StartScene extends Phaser.Scene {
 
     btn.on('pointerover', () => btn.setScale(1.06));
     btn.on('pointerout', () => btn.setScale(1));
-    btn.on('pointerdown', () => this.scene.start('GameScene'));
+    btn.on('pointerdown', () => {
+      this.ensurePlayerName();
+      this.scene.start('GameScene');
+    });
+
+    // Player name display
+    const savedName = localStorage.getItem('papillonPlayerName');
+    if (!savedName) {
+      localStorage.setItem('papillonPlayerName', 'Anonymous');
+    }
+    this._playerName = localStorage.getItem('papillonPlayerName') || 'Anonymous';
+    this.game.registry.set('playerName', this._playerName);
+    this.nameText = this.add.text(CW / 2, 670, 'Playing as: ' + this._playerName, {
+      fontSize: '16px', fontFamily: 'Segoe UI, Arial, sans-serif', color: '#ffffff'
+    }).setOrigin(0.5);
+
+    const changeNameText = this.add.text(CW / 2, 695, 'Change Name', {
+      fontSize: '13px', fontFamily: 'Segoe UI, Arial, sans-serif', color: '#66ccff'
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    changeNameText.on('pointerover', () => changeNameText.setColor('#aaddff'));
+    changeNameText.on('pointerout', () => changeNameText.setColor('#66ccff'));
+    changeNameText.on('pointerdown', () => {
+      this.promptPlayerName();
+    });
+
+    this.fetchAndRenderLeaderboard();
 
     this.cameras.main.setZoom(RES).centerOn(CW / 2, CH / 2);
+  }
+
+  ensurePlayerName() {
+    if (!this._playerName || this._playerName === 'Anonymous') {
+      this.promptPlayerName();
+    }
+  }
+
+  promptPlayerName() {
+    const current = localStorage.getItem('papillonPlayerName') || 'Anonymous';
+    const name = window.prompt('Enter your name:', current);
+    if (name !== null && name.trim() !== '') {
+      this._playerName = name.trim();
+    } else if (!this._playerName) {
+      this._playerName = 'Anonymous';
+    }
+    localStorage.setItem('papillonPlayerName', this._playerName);
+    this.game.registry.set('playerName', this._playerName);
+    if (this.nameText) {
+      this.nameText.setText('Playing as: ' + this._playerName);
+    }
+  }
+
+  async fetchAndRenderLeaderboard() {
+    const titleY = 735;
+    this.add.text(CW / 2, titleY, '🏆 Global Leaderboard', {
+      fontSize: '18px', fontFamily: 'Segoe UI, Arial, sans-serif',
+      color: '#ffd200', fontStyle: 'bold'
+    }).setOrigin(0.5);
+
+    this.add.text(CW / 2, titleY + 18, 'Ranked by faults first, then raw time', {
+      fontSize: '11px', fontFamily: 'Segoe UI, Arial, sans-serif', color: '#aaaaaa'
+    }).setOrigin(0.5);
+
+    if (!WORKER_URL) {
+      this.add.text(CW / 2, titleY + 42, 'Leaderboard unavailable', {
+        fontSize: '14px', fontFamily: 'Segoe UI, Arial, sans-serif', color: '#999999'
+      }).setOrigin(0.5);
+      return;
+    }
+
+    try {
+      const resp = await fetch(`${WORKER_URL}/leaderboard?limit=10`);
+      if (!resp.ok) throw new Error('Worker fetch failed');
+      const data = await resp.json();
+      if (!data || data.length === 0) {
+        this.add.text(CW / 2, titleY + 42, 'No scores yet. Be the first!', {
+          fontSize: '14px', fontFamily: 'Segoe UI, Arial, sans-serif', color: '#aaaaaa'
+        }).setOrigin(0.5);
+        return;
+      }
+
+      const headerY = titleY + 36;
+      const startX = CW / 2 - 210;
+      this.add.text(startX, headerY, '#', { fontSize: '12px', color: '#cccccc', fontFamily: 'Segoe UI, Arial, sans-serif' }).setOrigin(0, 0.5);
+      this.add.text(startX + 30, headerY, 'Player', { fontSize: '12px', color: '#cccccc', fontFamily: 'Segoe UI, Arial, sans-serif' }).setOrigin(0, 0.5);
+      this.add.text(startX + 190, headerY, 'Faults', { fontSize: '12px', color: '#cccccc', fontFamily: 'Segoe UI, Arial, sans-serif' }).setOrigin(0.5);
+      this.add.text(startX + 260, headerY, 'Time', { fontSize: '12px', color: '#cccccc', fontFamily: 'Segoe UI, Arial, sans-serif' }).setOrigin(0.5);
+
+      let prevFaults = null;
+      let displayIndex = 0;
+      data.forEach((entry) => {
+        if (prevFaults !== null && entry.faults !== prevFaults) {
+          displayIndex++; // extra spacing for visual group separation
+        }
+        const rowY = headerY + 20 + displayIndex * 20;
+        const rank = data.indexOf(entry) + 1;
+        const rankColor = rank === 1 ? '#ffd200' : rank === 2 ? '#c0c0c0' : rank === 3 ? '#cd7f32' : '#ffffff';
+        this.add.text(startX, rowY, rank.toString(), { fontSize: '13px', color: rankColor, fontFamily: 'Segoe UI, Arial, sans-serif', fontStyle: rank <= 3 ? 'bold' : 'normal' }).setOrigin(0, 0.5);
+        this.add.text(startX + 30, rowY, (entry.player_name || 'Anonymous').substring(0, 18), { fontSize: '13px', color: '#ffffff', fontFamily: 'Segoe UI, Arial, sans-serif' }).setOrigin(0, 0.5);
+        this.add.text(startX + 190, rowY, entry.faults.toString(), { fontSize: '13px', color: entry.faults === 0 ? '#66ff66' : '#ff6666', fontFamily: 'Segoe UI, Arial, sans-serif' }).setOrigin(0.5);
+        this.add.text(startX + 260, rowY, entry.time.toFixed(2) + 's', { fontSize: '13px', color: '#ffffff', fontFamily: 'Segoe UI, Arial, sans-serif' }).setOrigin(0.5);
+        prevFaults = entry.faults;
+        displayIndex++;
+      });
+    } catch (err) {
+      console.error('Leaderboard fetch failed:', err);
+      this.add.text(CW / 2, titleY + 42, 'Could not load leaderboard', {
+        fontSize: '14px', fontFamily: 'Segoe UI, Arial, sans-serif', color: '#ff6666'
+      }).setOrigin(0.5);
+    }
   }
 }
 
@@ -407,9 +518,9 @@ class GameScene extends Phaser.Scene {
 
     // Save run result for display on next run and future ghost feature
     const prev = this.game._lastRun;
-    this.game._lastRun = { time: this.finishTime, faults: this.faultsCount, total: tot };
-    if (!this.game._bestRun || tot < this.game._bestRun.total) {
-      this.game._bestRun = { time: this.finishTime, faults: this.faultsCount, total: tot };
+    this.game._lastRun = { time: this.finishTime, faults: this.faultsCount };
+    if (!this.game._bestRun || this.faultsCount < this.game._bestRun.faults || (this.faultsCount === this.game._bestRun.faults && this.finishTime < this.game._bestRun.time)) {
+      this.game._bestRun = { time: this.finishTime, faults: this.faultsCount };
       this.game._bestGhostPath = this._recordedPath.slice();
     }
 
@@ -419,13 +530,64 @@ class GameScene extends Phaser.Scene {
       `Total: ${tot.toFixed(2)}s`
     ];
     if (prev) {
-      lines.push(``, `Last run: ${prev.total.toFixed(2)}s`);
+      const prevTot = prev.time + prev.faults * 5;
+      lines.push(``, `Last run: ${prevTot.toFixed(2)}s`);
     }
     if (this.game._bestRun) {
-      lines.push(`Best run: ${this.game._bestRun.total.toFixed(2)}s`);
+      const bestTot = this.game._bestRun.time + this.game._bestRun.faults * 5;
+      lines.push(`Best run: ${bestTot.toFixed(2)}s`);
     }
     this.finishStats.setText(lines);
     this.scale.refresh();
+
+    this.submitRunToSupabase(this.finishTime, this.faultsCount);
+  }
+
+  async submitRunToSupabase(time, faults) {
+    if (!WORKER_URL) return;
+
+    const playerName = this.game.registry.get('playerName') || 'Anonymous';
+
+    try {
+      const token = window.TURNSTILE_TOKEN || '';
+      const resp = await fetch(`${WORKER_URL}/submit-score`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ player_name: playerName, time, faults, token }),
+      });
+
+      if (!resp.ok) {
+        const errBody = await resp.json().catch(() => ({}));
+        throw new Error(errBody.error || `HTTP ${resp.status}`);
+      }
+
+      const result = await resp.json();
+      if (!result.ok) throw new Error(result.error);
+
+      if (this.finishStats && this.finishStats.active) {
+        const currentText = this.finishStats.text.split('\n');
+        if (result.rank != null) {
+          currentText.push('', `Global rank: #${result.rank}`);
+        } else {
+          currentText.push('', '(Rank unavailable)');
+        }
+        this.finishStats.setText(currentText);
+        this.scale.refresh();
+      }
+
+      // Refresh Turnstile token for next run
+      if (window.REFRESH_TURNSTILE) {
+        window.REFRESH_TURNSTILE();
+      }
+    } catch (err) {
+      console.error('Leaderboard submit failed:', err);
+      if (this.finishStats && this.finishStats.active) {
+        const currentText = this.finishStats.text.split('\n');
+        currentText.push('', '(Leaderboard sync failed)');
+        this.finishStats.setText(currentText);
+        this.scale.refresh();
+      }
+    }
   }
 
   _cleanupDomRestart() {

@@ -1,1 +1,28 @@
-.kimchi
+# ── OS & Editor ──────────────────────────────────────────────────────────────
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~
+
+# ── Secrets & Local Config ───────────────────────────────────────────────────
+# .dev.vars is created from .dev.vars.example and contains local Worker secrets
+.dev.vars
+.env
+.env.local
+
+# ── Cloudflare Wrangler ──────────────────────────────────────────────────────
+.wrangler/
+node_modules/
+
+# ── Build Artifacts ──────────────────────────────────────────────────────────
+dist/
+build/
+*.log
+
+# ── Kimchi / AI Agent ────────────────────────────────────────────────────────
+.kimchi/
+
+# ── Temporary / Junk ─────────────────────────────────────────────────────────
+*.tmp
+*.bak

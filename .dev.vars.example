@@ -1,0 +1,15 @@
+# Copy this file to .dev.vars and replace with your real credentials.
+# .dev.vars is gitignored and used for local `wrangler dev` only.
+# NEVER commit .dev.vars to Git.
+#
+# Worker talks directly to Supabase with your Publishable key.
+# SUPABASE_SERVICE_ROLE_KEY is optional — only needed if RLS policies are missing.
+# ALLOWED_ORIGIN defaults to https://kasia-kujawa.github.io if not set.
+# TURNSTILE_SECRET_KEY is optional — Turnstile verification is bypassed if not set.
+
+SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co
+SUPABASE_ANON_KEY=YOUR_PUBLISHABLE_KEY_HERE
+ALLOWED_ORIGIN=https://kasia-kujawa.github.io
+
+# Optional Turnstile protection (get from Cloudflare Dashboard → Turnstile):
+# TURNSTILE_SECRET_KEY=0x4AAAA...your-secret-key...
