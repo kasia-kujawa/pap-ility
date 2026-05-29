@@ -148,45 +148,92 @@ Background (grass)
 
 ---
 
-## 3. Ghost System — Integration Points
+## 3. Optimal-Path Ghost System — Integration Points
 
-### 3.1 New Class/Module
+### 3.1 Grid-Based Pathfinding
 
-Because there is no module system, add a class definition in `game.js` before `StartScene`:
+The course area (1200×900) is discretized into a **40×30 grid** (30×30 px cells). Each cell stores:
+
+| Property | Meaning |
+|----------|---------|
+| `speedMul` | Minimum multiplier from all overlapping modifiers (1.0 default) |
+| `blocked`  | True if the cell center lies inside any obstacle hit radius |
+| `cx`, `cy` | World-space center of the cell |
+
+#### 3.1.1 Grid Construction (`createCourseGrid()`)
+
+Called once from `GameScene.create()`. Iterates every cell and:
+1. Tests modifier overlap using the same rotated-ellipse math as `getSpeedMultiplier()`.
+2. Tests obstacle overlap using the same hit-radius logic as `checkObstacle()`.
+
+#### 3.1.2 A* Pathfinding (`findPath(x1, y1, x2, y2)`)
+
+- Converts start/end world coordinates to grid indices via `worldToGrid()`.
+- Uses an 8-connected neighbor set (cardinal + diagonal).
+- Edge cost = `distance / speedMul` (distance is cellW, cellH, or hypot(cellW, cellH) for diagonals).
+- Heuristic = Euclidean distance to goal.
+- Blocked cells are skipped entirely.
+- Falls back to a straight line if no route is found.
+
+#### 3.1.3 Segment Pre-Computation (`computeOptimalPaths()`)
+
+For every consecutive obstacle pair (including start→#1 and #16→finish):
 
 ```js
-class GhostRecorder {
-  constructor() { this.snapshots = []; this.recording = false; }
-  start() { this.snapshots = []; this.recording = true; this.startTime = performance.now(); }
-  record(state) { /* push snapshot */ }
-  stop() { this.recording = false; return this.snapshots; }
-  static save(run) { localStorage.setItem('papility_ghost_v1_A1(1)', JSON.stringify(run)); }
-  static load() { /* read + validate version */ }
+const allPoints = courseObs.map(o => ({ x: o.cx, y: o.cy }));
+allPoints.push({ x: finishGate.cx, y: finishGate.cy });
+for each pair (a, b) {
+  paths.push(findPath(a.x, a.y, b.x, b.y));
 }
 ```
 
-### 3.2 Ghost State on GameScene
+Then calls `buildTimedGhostPath()` to concatenate segments and assign cumulative travel time to each waypoint.
+
+### 3.2 Ghost Timing (`buildTimedGhostPath()`)
+
+The ghost is no longer a recorded run; it is a **pre-computed timed waypoint list**.
 
 ```js
-// In create()
-this.ghostRun = GhostRecorder.load(); // null if none stored
-this.ghostGfx = this.add.graphics();
-this.ghostState = { x: 0, y: 0, angle: 0, boosting: false, visible: false };
-
-// If ghost exists, draw the ghost papillon in update()
-if (this.ghostRun && this.timerStarted && !this.finished) {
-  this.updateGhost();
-  this.drawGhost();
+const points = [];
+let cumulativeTime = 0;
+for each segment of allSegments {
+  for each waypoint p in segment {
+    if (prev) {
+      const dist = Math.hypot(p.x - prev.x, p.y - prev.y);
+      const speedMul = gridCellAtMidpoint.speedMul;
+      cumulativeTime += dist / (BASE_MAX_SPEED * speedMul);
+    }
+    points.push({ t: cumulativeTime, x: p.x, y: p.y });
+    prev = p;
+  }
 }
 ```
 
-### 3.3 Recording Lifecycle
+### 3.3 Ghost Replay (`updateGhost()`)
 
-| Trigger | Action | Location in Code |
-|---------|--------|------------------|
-| `timerStarted` first becomes true | Call `this.ghostRecorder.start()` | Inside `completeOb()` when `ob.num === 1` or in `update()` guarded by a one-shot flag |
-| Every frame while running | Call `this.ghostRecorder.record({t, x, y, angle, boosting})` | Inside `update()` after `updateDog()` |
-| `finished` becomes true | Call `this.evaluateGhostRun()` | Inside `checkFinishGate()` or at the end of `update()` |
+Same interpolation logic as the old snapshot-based ghost, but reads from `this.ghostPath`:
+
+```js
+updateGhost() {
+  const path = this.ghostPath;
+  // Find bracketing waypoints by elapsedTime
+  // Linear interpolate position
+  // Angle derived from direction vector (b.x - a.x, b.y - a.y)
+}
+```
+
+### 3.4 Removed Components
+
+| Component | Status | Reason |
+|-----------|--------|--------|
+| `GhostRecorder` class | **Removed** | No longer needed; ghost is computed, not recorded |
+| `localStorage` ghost key | **Orphaned** | Old key is never read or written |
+| `evaluateGhostRun()` | **Removed** | No run evaluation; path is fixed |
+| Personal-best save/load | **Removed** | Ghost always shows the same optimal route |
+
+---
+
+## 4. Speed Modifiers — Integration Points
 
 ### 3.4 Evaluation Logic
 

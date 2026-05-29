@@ -11,6 +11,31 @@ Both systems keep the existing core loop intact: 16 numbered obstacles, timer fr
 
 ---
 
+## Course Layout (v2)
+
+### Blocking Analysis
+The initial course layout had four obstacles whose hit radii overlapped the direct path between consecutive obstacles, forcing the dog to clip through them:
+
+| Segment | Blocker | Distance | Hit Radius | Gap |
+|---------|---------|----------|------------|-----|
+| 3 → 4 | Obstacle 10 (jump) | 25.0 px | 35 px | −10.0 px |
+| 4 → 5 | Obstacle 6 (jump) | 9.6 px | 35 px | −25.4 px |
+| 6 → 7 | Obstacle 4 (dogwalk) | 13.7 px | 50 px | −36.3 px |
+| 15 → 16 | Obstacle 3 (aframe) | 7.2 px | 40 px | −32.8 px |
+
+### Adjusted Positions
+
+| Obstacle | Type | Old Position | New Position | Rationale |
+|----------|------|--------------|--------------|-----------|
+| 3 | aframe | (600, 567) | (480, 430) | Clears 15→16 and 9→10 lines |
+| 4 | dogwalk | (408, 279) | (300, 150) | Clears 6→7 line; keeps 3→4→5 triangular flow |
+| 6 | jump | (552, 225) | (680, 70) | Clears 4→5 line; moved further from direct route |
+| 10 | jump | (504, 468) | (620, 440) | Clears 3→4 line; shifted right and down |
+
+All other obstacles remain at their original positions. After adjustment, a geometric check confirms **zero blocking obstacles** remain.
+
+---
+
 ## 1. Speed Modifiers
 
 ### 1.1 Motivation
@@ -79,78 +104,60 @@ Add a small text indicator near the timer (or reuse the boost bar area) that sho
 
 ---
 
-## 2. Ghost System
+## 2. Optimal-Path Ghost System
 
 ### 2.1 Motivation
-The ideas doc requests a "semi-transparent ghost dog" that plays back the fastest run, creating a competitive chase-your-best loop similar to Trackmania.
+The ideas doc requests a ghost dog that plays back the **optimal fastest route** between obstacles, considering modifier slowdowns. This replaces the previous personal-best replay with a deterministic, pre-computed optimal path.
 
-### 2.2 Data Model
+### 2.2 Grid-Based Pathfinding
 
-#### 2.2.1 Snapshot Format
-During an active run (timer started at obstacle #1), record the dog state at **20 Hz** (every 50 ms):
+#### 2.2.1 Course Grid
+The course area (1200×900) is discretized into a **40×30 grid** (30×30 px cells). Each cell stores:
+- `speedMul` — minimum speed multiplier from overlapping modifiers (1.0 default)
+- `blocked` — true if the cell center lies inside any obstacle hit radius
+- `cx`, `cy` — world-space center of the cell
 
-```ts
-interface GhostSnapshot {
-  t: number;      // elapsed time in seconds since timer start
-  x: number;      // dog body x
-  y: number;      // dog body y
-  angle: number;  // facing angle
-  boosting: boolean;
-}
+#### 2.2.2 A* Pathfinding
+- 8-connected neighbors (cardinal + diagonal)
+- Edge cost = `distance / speedMul`
+- Heuristic = Euclidean distance to goal
+- Blocked cells are skipped entirely
+- Falls back to a straight line if no route is found
+
+#### 2.2.3 Segment Pre-Computation
+For every consecutive obstacle pair (including start position → obstacle #1 and obstacle #16 → finish gate), `findPath()` computes the fastest route on the grid. The resulting segments are stored in `this.optimalPaths`.
+
+### 2.3 Ghost Timing
+
+`buildTimedGhostPath()` concatenates all optimal path segments and assigns a cumulative travel-time `t` to each waypoint:
+
+```
+time += distance_between_waypoints / (BASE_MAX_SPEED * midpoint_speedMul)
 ```
 
-#### 2.2.2 Run Record Format
-```ts
-interface GhostRun {
-  version: 1;
-  courseName: 'A1(1)';
-  finishTime: number;       // raw time without penalty
-  totalTime: number;        // finishTime + (faults * 5)
-  faults: number;
-  snapshots: GhostSnapshot[];
-}
-```
+The ghost waypoints have the structure `{ t, x, y }`.
 
-#### 2.2.3 localStorage Schema
-Key: `papility_ghost_v1_A1(1)`
-Value: JSON-serialized `GhostRun`.
+### 2.4 Ghost Replay
 
-On game load, attempt to read this key. If missing or `version` mismatch, ignore (no ghost shown).
+`updateGhost()` interpolates the ghost along the timed waypoint list (`this.ghostPath`) using the same linear interpolation as the old snapshot-based ghost. The ghost angle is derived from the direction vector between consecutive waypoints.
 
-### 2.3 Recording Lifecycle
+### 2.5 Removed Features
 
-1. **Start recording** — When `timerStarted` becomes true (dog clears obstacle #1), begin capturing snapshots into `this.currentRunSnapshots`.
-2. **Continue recording** — Every frame, if `timerStarted && !finished`, push a snapshot with the current elapsed time.
-3. **Stop recording** — On finish gate trigger.
-4. **Evaluate & persist** —
-   - If no stored ghost exists, save this run as the new ghost.
-   - If a stored ghost exists, compare `totalTime` (time + penalty). If the new run is strictly better, overwrite.
-   - If equal or worse, discard the new recording.
+The following features from the previous personal-best ghost were removed:
 
-### 2.4 Replay Lifecycle
-
-1. **Load** — In `GameScene.create()`, read `localStorage`. If a valid run exists, store it in `this.ghostRun`.
-2. **Render** — Create a separate `Graphics` object (`ghostGfx`) drawn **under** the live dog but **over** the grass/path.
-3. **Update** — Each frame while `timerStarted && !finished`, compute `ghostElapsed = this.elapsedTime`. Find the two bracketing snapshots and linearly interpolate position and angle. Set `ghostBoosting` from the nearest snapshot.
-4. **Draw** — Call a modified `drawPapillon(g, x, y, angle, state)` that renders the same dog art but with:
-   - Body filled at 40% opacity (`#ffffff` base tint)
-   - Ears and details desaturated to a cool blue-grey
-   - No shadow ellipse
-   - A faint trailing glow (expanding, fading circles behind the ghost)
-
-### 2.5 StartScreen Ghost Info
-
-On the start screen, if a ghost exists, display:
-- `Best: 23.45s` (or `Best: 28.45s (3 faults)` if faults exist)
-- Small text: `"Beat the ghost!"`
+| Feature | Replacement |
+|---------|-------------|
+| `GhostRecorder` class | Grid-based A* pathfinder |
+| `localStorage` save/load | Nothing (path is computed at runtime) |
+| Personal-best comparison | Deterministic optimal route |
+| Snapshot-based replay | Waypoint-based interpolation |
 
 ### 2.6 Acceptance Criteria
-- [ ] First run records and saves to localStorage after crossing the finish gate.
-- [ ] Second run shows a semi-transparent ghost dog that follows the exact path of the first run, synced by elapsed time.
+- [ ] Ghost follows the pre-computed optimal path on every run.
+- [ ] Ghost accounts for modifier slowdowns in its route timing.
+- [ ] Ghost replays consistently (same path every time for the same course layout).
 - [ ] Ghost does not affect physics, collisions, or obstacle completion.
-- [ ] A faster run overwrites the stored ghost; a slower run does not.
-- [ ] Reloading the page still loads the ghost from localStorage.
-- [ ] Start screen displays the best time when a ghost is stored.
+- [ ] No localStorage access for ghost data.
 
 ---
 

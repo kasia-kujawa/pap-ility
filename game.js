@@ -14,14 +14,14 @@ const OBS_TYPES = {
 const courseObs = [
   { num:1,  type:'jump',    cx:1056, cy:783, angle: 0.30 },
   { num:2,  type:'dogwalk', cx: 816, cy:815, angle: 0.05 },
-  { num:3,  type:'aframe',  cx: 600, cy:567, angle: 0.60 },
-  { num:4,  type:'dogwalk', cx: 408, cy:279, angle: 0.05 },
+  { num:3,  type:'aframe',  cx: 480, cy:430, angle: 0.60 },
+  { num:4,  type:'dogwalk', cx: 300, cy:150, angle: 0.05 },
   { num:5,  type:'jump',    cx: 810, cy: 99, angle:-0.50 },
-  { num:6,  type:'jump',    cx: 552, cy:225, angle:-0.15 },
+  { num:6,  type:'jump',    cx: 680, cy: 70, angle:-0.15 },
   { num:7,  type:'ctunnel', cx:  96, cy:351, angle: 1.20 },
   { num:8,  type:'jump',    cx: 216, cy:657, angle: 0.50 },
   { num:9,  type:'jump',    cx: 348, cy:513, angle:-0.25 },
-  { num:10, type:'jump',    cx: 504, cy:468, angle: 0.10 },
+  { num:10, type:'jump',    cx: 620, cy:440, angle: 0.10 },
   { num:11, type:'jump',    cx: 588, cy:747, angle:-0.30 },
   { num:12, type:'weave',   cx: 732, cy:603, angle:-0.15 },
   { num:13, type:'tunnel',  cx:1032, cy:441, angle:-0.50 },
@@ -56,53 +56,6 @@ const BASE_ACCEL = 21;
 const BOOST_DURATION_MS = 500;
 const BOOST_COOLDOWN_MS = 3000;
 const BOOST_MULTIPLIER = 2.0;
-
-class GhostRecorder {
-  constructor() {
-    this.snapshots = [];
-    this.recording = false;
-    this.startTime = 0;
-  }
-
-  start(now) {
-    this.snapshots = [];
-    this.recording = true;
-    this.startTime = now;
-  }
-
-  record(state, now) {
-    if (!this.recording) return;
-    const t = (now - this.startTime) / 1000;
-    this.snapshots.push({
-      t,
-      x: state.x,
-      y: state.y,
-      angle: state.angle,
-      boosting: state.boosting
-    });
-  }
-
-  stop() {
-    this.recording = false;
-    return this.snapshots;
-  }
-
-  static save(run) {
-    localStorage.setItem('papility_ghost_v1_A1(1)', JSON.stringify(run));
-  }
-
-  static load() {
-    const raw = localStorage.getItem('papility_ghost_v1_A1(1)');
-    if (!raw) return null;
-    try {
-      const run = JSON.parse(raw);
-      if (run.version !== 1) return null;
-      return run;
-    } catch (e) {
-      return null;
-    }
-  }
-}
 
 class StartScene extends Phaser.Scene {
   constructor() {
@@ -179,7 +132,6 @@ class GameScene extends Phaser.Scene {
       angle: Math.PI
     };
 
-    this.ghostRun = GhostRecorder.load();
     this.ghostState = { x: 0, y: 0, angle: 0, boosting: false, visible: false };
 
     this.particles = [];
@@ -213,7 +165,8 @@ class GameScene extends Phaser.Scene {
     this.ghostGfx = this.add.graphics();
     this.kidsHalo = this.add.graphics();
     this.prevModifiers = new Set();
-    this.ghostRecorder = new GhostRecorder();
+    this.courseGrid = this.createCourseGrid();
+    this.optimalPaths = this.computeOptimalPaths();
     this.guideArrowGfx = this.add.graphics();
 
     this.createHUD();
@@ -598,6 +551,171 @@ class GameScene extends Phaser.Scene {
 
   createFinishGateGraphics() {
     this.finishGateGfx = this.add.graphics();
+  }
+
+  createCourseGrid() {
+    const cols = 40, rows = 30;
+    const cellW = CW / cols;
+    const cellH = CH / rows;
+    const grid = [];
+    for (let row = 0; row < rows; row++) {
+      const rowArr = [];
+      for (let col = 0; col < cols; col++) {
+        const cx = col * cellW + cellW / 2;
+        const cy = row * cellH + cellH / 2;
+        let speedMul = 1.0;
+        for (const mod of courseModifiers) {
+          const dx = cx - mod.cx;
+          const dy = cy - mod.cy;
+          const cos = Math.cos(-mod.angle);
+          const sin = Math.sin(-mod.angle);
+          const lx = dx * cos - dy * sin;
+          const ly = dx * sin + dy * cos;
+          if ((lx / mod.rx) ** 2 + (ly / mod.ry) ** 2 <= 1) {
+            const modMul = mod.type === 'mud' ? 0.45 : mod.type === 'wetGrass' ? 0.65 : 0.75;
+            if (modMul < speedMul) speedMul = modMul;
+          }
+        }
+        let blocked = false;
+        for (const ob of courseObs) {
+          const dx = cx - ob.cx;
+          const dy = cy - ob.cy;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const hr = ob.type === 'ctunnel' ? 65 : ob.type === 'tunnel' ? 45 : ob.type === 'dogwalk' || ob.type === 'seesaw' ? 50 : ob.type === 'aframe' ? 40 : ob.type === 'weave' ? 40 : 35;
+          if (dist < hr) { blocked = true; break; }
+        }
+        rowArr.push({ speedMul, blocked, cx, cy });
+      }
+      grid.push(rowArr);
+    }
+    return { cols, rows, cellW, cellH, grid };
+  }
+
+  worldToGrid(x, y) {
+    const g = this.courseGrid;
+    const col = Math.floor(x / g.cellW);
+    const row = Math.floor(y / g.cellH);
+    return {
+      col: Math.max(0, Math.min(g.cols - 1, col)),
+      row: Math.max(0, Math.min(g.rows - 1, row))
+    };
+  }
+
+  findPath(x1, y1, x2, y2) {
+    const g = this.courseGrid;
+    const start = this.worldToGrid(x1, y1);
+    const end = this.worldToGrid(x2, y2);
+    const open = [];
+    const closed = new Set();
+    const cameFrom = {};
+    const gScore = {};
+    const fScore = {};
+    const key = (c, r) => `${c},${r}`;
+    const startKey = key(start.col, start.row);
+    gScore[startKey] = 0;
+    fScore[startKey] = Math.hypot(x2 - x1, y2 - y1);
+    open.push({ col: start.col, row: start.row, f: fScore[startKey] });
+
+    const neighbors = [
+      { dc: 0, dr: -1, dist: g.cellH },
+      { dc: 0, dr: 1, dist: g.cellH },
+      { dc: -1, dr: 0, dist: g.cellW },
+      { dc: 1, dr: 0, dist: g.cellW },
+      { dc: -1, dr: -1, dist: Math.hypot(g.cellW, g.cellH) },
+      { dc: 1, dr: -1, dist: Math.hypot(g.cellW, g.cellH) },
+      { dc: -1, dr: 1, dist: Math.hypot(g.cellW, g.cellH) },
+      { dc: 1, dr: 1, dist: Math.hypot(g.cellW, g.cellH) },
+    ];
+
+    while (open.length > 0) {
+      open.sort((a, b) => a.f - b.f);
+      const current = open.shift();
+      const currentKey = key(current.col, current.row);
+      if (current.col === end.col && current.row === end.row) {
+        const path = [];
+        let ck = currentKey;
+        while (ck) {
+          const [c, r] = ck.split(',').map(Number);
+          path.push({ x: g.grid[r][c].cx, y: g.grid[r][c].cy });
+          ck = cameFrom[ck];
+        }
+        path.reverse();
+        path[0] = { x: x1, y: y1 };
+        path[path.length - 1] = { x: x2, y: y2 };
+        return path;
+      }
+      closed.add(currentKey);
+      for (const n of neighbors) {
+        const nc = current.col + n.dc;
+        const nr = current.row + n.dr;
+        if (nc < 0 || nc >= g.cols || nr < 0 || nr >= g.rows) continue;
+        const nKey = key(nc, nr);
+        if (closed.has(nKey)) continue;
+        if (g.grid[nr][nc].blocked) continue;
+        const speedMul = g.grid[nr][nc].speedMul;
+        const tentativeG = gScore[currentKey] + (n.dist / speedMul);
+        if (gScore[nKey] === undefined || tentativeG < gScore[nKey]) {
+          cameFrom[nKey] = currentKey;
+          gScore[nKey] = tentativeG;
+          const cell = g.grid[nr][nc];
+          const h = Math.hypot(x2 - cell.cx, y2 - cell.cy);
+          fScore[nKey] = tentativeG + h;
+          const existing = open.find(o => o.col === nc && o.row === nr);
+          if (existing) { existing.f = fScore[nKey]; }
+          else { open.push({ col: nc, row: nr, f: fScore[nKey] }); }
+        }
+      }
+    }
+    return [{ x: x1, y: y1 }, { x: x2, y: y2 }];
+  }
+
+  computeOptimalPaths() {
+    const allPoints = courseObs.map(o => ({ x: o.cx, y: o.cy }));
+    allPoints.push({ x: finishGate.cx, y: finishGate.cy });
+    const paths = [];
+    for (let i = 0; i < allPoints.length - 1; i++) {
+      const a = allPoints[i];
+      const b = allPoints[i + 1];
+      const path = this.findPath(a.x, a.y, b.x, b.y);
+      paths.push(path);
+    }
+    this.optimalPaths = paths;
+    const fullPath = this.buildTimedGhostPath();
+    this.ghostPath = fullPath;
+    return paths;
+  }
+
+  buildTimedGhostPath() {
+    const g = this.courseGrid;
+    const startPos = { x: 1150, y: 840 };
+    const firstOb = { x: courseObs[0].cx, y: courseObs[0].cy };
+    const startPath = this.findPath(startPos.x, startPos.y, firstOb.x, firstOb.y);
+    const allSegments = [startPath, ...this.optimalPaths];
+
+    const points = [];
+    let cumulativeTime = 0;
+    let prev = null;
+
+    for (const segment of allSegments) {
+      for (let i = 0; i < segment.length; i++) {
+        const p = segment[i];
+        if (prev) {
+          const dx = p.x - prev.x;
+          const dy = p.y - prev.y;
+          const dist = Math.hypot(dx, dy);
+          const midX = (p.x + prev.x) / 2;
+          const midY = (p.y + prev.y) / 2;
+          const gridPos = this.worldToGrid(midX, midY);
+          const cell = g.grid[gridPos.row][gridPos.col];
+          const speedMul = cell.speedMul;
+          const time = dist / (BASE_MAX_SPEED * speedMul);
+          cumulativeTime += time;
+        }
+        points.push({ t: cumulativeTime, x: p.x, y: p.y });
+        prev = p;
+      }
+    }
+    return points;
   }
 
   drawFinishGateOb() {
@@ -1157,29 +1275,31 @@ class GameScene extends Phaser.Scene {
   }
 
   updateGhost() {
-    if (!this.ghostRun || !this.timerStarted || this.finished) {
+    if (!this.ghostPath || !this.timerStarted || this.finished) {
       this.ghostState.visible = false;
       return;
     }
     const t = this.elapsedTime;
-    const snaps = this.ghostRun.snapshots;
-    if (!snaps || snaps.length === 0) {
+    const path = this.ghostPath;
+    if (!path || path.length === 0) {
       this.ghostState.visible = false;
       return;
     }
     let i = 0;
-    while (i < snaps.length - 1 && snaps[i + 1].t < t) i++;
-    if (i >= snaps.length - 1) {
+    while (i < path.length - 1 && path[i + 1].t < t) i++;
+    if (i >= path.length - 1) {
       this.ghostState.visible = false;
       return;
     }
-    const a = snaps[i], b = snaps[i + 1];
+    const a = path[i], b = path[i + 1];
     const p = (t - a.t) / (b.t - a.t);
-    // Linear interpolate ghost position and angle between snapshots
+    // Linear interpolate ghost position between optimal-path waypoints
     this.ghostState.x = a.x + (b.x - a.x) * p;
     this.ghostState.y = a.y + (b.y - a.y) * p;
-    this.ghostState.angle = a.angle + (b.angle - a.angle) * p;
-    this.ghostState.boosting = b.boosting;
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    this.ghostState.angle = Math.atan2(dy, dx);
+    this.ghostState.boosting = false;
     this.ghostState.visible = true;
   }
 
@@ -1227,7 +1347,6 @@ class GameScene extends Phaser.Scene {
     if (ob.num === 1 && !this.timerStarted) {
       this.timerStarted = true;
       this.startTime = this.time.now;
-      this.ghostRecorder.start(this.time.now);
     }
 
     this.checkAllDone();
@@ -1241,25 +1360,6 @@ class GameScene extends Phaser.Scene {
     }
   }
 
-  evaluateGhostRun() {
-    const snapshots = this.ghostRecorder.stop();
-    const newRun = {
-      version: 1,
-      courseName: 'A1(1)',
-      finishTime: this.finishTime,
-      totalTime: this.finishTime + this.faultsCount * 5,
-      faults: this.faultsCount,
-      snapshots
-    };
-    const stored = GhostRecorder.load();
-    if (!stored || newRun.totalTime < stored.totalTime) {
-      GhostRecorder.save(newRun);
-      this.bestTime = newRun.totalTime;
-    } else {
-      this.bestTime = stored.totalTime;
-    }
-  }
-
   checkFinishGate() {
     if (!this.allDone || this.finished) return;
     const dx = this.dogBody.x - finishGate.cx;
@@ -1267,7 +1367,6 @@ class GameScene extends Phaser.Scene {
     if (Math.sqrt(dx * dx + dy * dy) < 40) {
       this.finished = true;
       this.finishTime = this.elapsedTime;
-      this.evaluateGhostRun();
       this.showFinish();
     }
   }
@@ -1301,12 +1400,6 @@ class GameScene extends Phaser.Scene {
       if (this.timerStarted && !this.finished) {
         this.elapsedTime = (time - this.startTime) / 1000;
         this.timerText.setText(this.elapsedTime.toFixed(2));
-        this.ghostRecorder.record({
-          x: this.dogBody.x,
-          y: this.dogBody.y,
-          angle: this.dogBody.body.angle,
-          boosting: this.dogState.boosting
-        }, time);
       }
     } else {
       this.updateParticles(delta);
