@@ -176,7 +176,11 @@ class StartScene extends Phaser.Scene {
 
     try {
       const resp = await fetch(`${WORKER_URL}/leaderboard?limit=10`);
-      if (!resp.ok) throw new Error('Worker fetch failed');
+      if (!resp.ok) {
+        const errBody = await resp.json().catch(() => ({}));
+        console.error('Worker error:', resp.status, errBody);
+        throw new Error(errBody.error || `Worker fetch failed (${resp.status})`);
+      }
       const data = await resp.json();
       if (!data || data.length === 0) {
         this.add.text(CW / 2, titleY + 42, 'No scores yet. Be the first!', {
@@ -558,6 +562,7 @@ class GameScene extends Phaser.Scene {
 
       if (!resp.ok) {
         const errBody = await resp.json().catch(() => ({}));
+        console.error('Worker error:', resp.status, errBody);
         throw new Error(errBody.error || `HTTP ${resp.status}`);
       }
 
