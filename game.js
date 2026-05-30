@@ -147,6 +147,11 @@ class GameScene extends Phaser.Scene {
         this.load.svg(key, assets[key], { width: 128, height: 128 });
       }
     }
+    // Load SFX audio files
+    this.load.audio('sfx_boost', 'assets/boost.mp3');
+    this.load.audio('sfx_checkpoint', 'assets/checkpoint.mp3');
+    this.load.audio('sfx_kids', 'assets/kids.mp3');
+    this.load.audio('sfx_water_and_mud', 'assets/water_and_mud.mp3');
   }
 
   create() {
@@ -998,6 +1003,7 @@ class GameScene extends Phaser.Scene {
     if (this.cursors.space.isDown && !ds.boosting && ds.boostCooldown <= 0) {
       ds.boosting = true;
       ds.boostTimer = BOOST_DURATION_MS;
+      this.sound.play('sfx_boost');
     }
 
     if (ds.boosting) {
@@ -1157,6 +1163,7 @@ class GameScene extends Phaser.Scene {
 
     // MUD — enormous brown splatter bomb
     if (current.has('mud') && !this.prevModifiers.has('mud')) {
+      this.sound.play('sfx_water_and_mud');
       for (let i = 0; i < 80; i++) {
         const a = Math.random() * Math.PI * 2;
         const sp = 150 + Math.random() * 400;
@@ -1185,6 +1192,7 @@ class GameScene extends Phaser.Scene {
 
     // WET GRASS — tidal wave splash
     if (current.has('wetGrass') && !this.prevModifiers.has('wetGrass')) {
+      this.sound.play('sfx_water_and_mud');
       for (let i = 0; i < 70; i++) {
         const a = Math.random() * Math.PI * 2;
         const sp = 180 + Math.random() * 400;
@@ -1213,6 +1221,7 @@ class GameScene extends Phaser.Scene {
 
     // KIDS — ultra rainbow neon explosion
     if (current.has('kids') && !this.prevModifiers.has('kids')) {
+      this.sound.play('sfx_kids');
       for (let i = 0; i < 90; i++) {
         const a = Math.random() * Math.PI * 2;
         const sp = 180 + Math.random() * 450;
@@ -1340,6 +1349,7 @@ class GameScene extends Phaser.Scene {
     if (this.completedObs.has(ob.num)) return;
     this.completedObs.add(ob.num);
     this.currentObs++;
+    this.sound.play('sfx_checkpoint');
     // CHECKPOINT — massive golden supernova
     for (let i = 0; i < 70; i++) {
       const a = Math.random() * Math.PI * 2;
