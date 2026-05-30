@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- Main body shape: white oval tapering to head -->
+  <path d="M 100 155
+           C 78 155, 68 138, 68 112
+           C 68 90, 78 72, 85 58
+           C 90 48, 93 38, 94 32
+           C 95 28, 97 25, 100 25
+           C 103 25, 105 28, 106 32
+           C 107 38, 110 48, 115 58
+           C 122 72, 132 90, 132 112
+           C 132 138, 122 155, 100 155 Z"
+        fill="#FFFFFF" stroke="#E5E0DA" stroke-width="0.8"/>
+
+  <!-- Left ear base / head brown patch -->
+  <path d="M 88 48
+           C 82 44, 80 38, 82 34
+           C 85 30, 92 30, 96 35
+           C 98 38, 98 42, 94 45
+           C 92 48, 90 48, 88 48 Z"
+        fill="#D45500"/>
+
+  <!-- Right ear base / head brown patch -->
+  <path d="M 112 48
+           C 118 44, 120 38, 118 34
+           C 115 30, 108 30, 104 35
+           C 102 38, 102 42, 106 45
+           C 108 48, 110 48, 112 48 Z"
+        fill="#D45500"/>
+
+  <!-- Back orange patch -->
+  <ellipse cx="100" cy="115" rx="14" ry="22" fill="#D45500" opacity="0.72"/>
+
+  <!-- Chest lighter area -->
+  <ellipse cx="100" cy="82" rx="10" ry="16" fill="#F5F0EA" opacity="0.6"/>
+
+  <!-- Snout -->
+  <path d="M 94 30
+           L 100 14
+           L 106 30
+           C 104 34, 96 34, 94 30 Z"
+        fill="#FFFFFF" stroke="#E5E0DA" stroke-width="0.5"/>
+
+  <!-- Nose -->
+  <circle cx="100" cy="14" r="2.8" fill="#1A0A00"/>
+
+  <!-- Eyes -->
+  <ellipse cx="95" cy="26" rx="1.6" ry="2" fill="#111111"/>
+  <ellipse cx="105" cy="26" rx="1.6" ry="2" fill="#111111"/>
+  <circle cx="95.4" cy="25.2" r="0.5" fill="#FFFFFF"/>
+  <circle cx="105.4" cy="25.2" r="0.5" fill="#FFFFFF"/>
+
+  <!-- Mouth line -->
+  <path d="M 97 21 Q 100 23 103 21" stroke="#1A0A00" stroke-width="0.5" fill="none"/>
+
+  <!-- Subtle body shading -->
+  <ellipse cx="100" cy="105" rx="18" ry="30" fill="#F8F4EF" opacity="0.35"/>
+</svg>

@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- Weave poles — 6 poles in a zigzag/serpentine line -->
+  <!-- Zigzag guide line (subtle) -->
+  <polyline points="25,108 43,92 61,108 79,92 97,108 115,92 133,108 151,92 169,108"
+            fill="none" stroke="#e74c8c" stroke-width="2" opacity="0.15" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Weave poles: 6 poles at x=25, 54, 83, 112, 141, 170 (spaced 29px apart) -->
+  <!-- Pole 1 at x=25 -->
+  <ellipse cx="25" cy="104" rx="5" ry="3" fill="#aaaaaa"/>
+  <rect x="23.5" y="80" width="3" height="24" rx="1.5" fill="#ffffff" stroke="#e74c8c" stroke-width="0.5"/>
+  <circle cx="25" cy="80" r="3.5" fill="#e74c8c" stroke="#c41e3a" stroke-width="0.5"/>
+
+  <!-- Pole 2 at x=54 -->
+  <ellipse cx="54" cy="104" rx="5" ry="3" fill="#aaaaaa"/>
+  <rect x="52.5" y="80" width="3" height="24" rx="1.5" fill="#ffffff" stroke="#e74c8c" stroke-width="0.5"/>
+  <circle cx="54" cy="80" r="3.5" fill="#ffffff" stroke="#e74c8c" stroke-width="0.5"/>
+
+  <!-- Pole 3 at x=83 -->
+  <ellipse cx="83" cy="104" rx="5" ry="3" fill="#aaaaaa"/>
+  <rect x="81.5" y="80" width="3" height="24" rx="1.5" fill="#ffffff" stroke="#e74c8c" stroke-width="0.5"/>
+  <circle cx="83" cy="80" r="3.5" fill="#e74c8c" stroke="#c41e3a" stroke-width="0.5"/>
+
+  <!-- Pole 4 at x=112 -->
+  <ellipse cx="112" cy="104" rx="5" ry="3" fill="#aaaaaa"/>
+  <rect x="110.5" y="80" width="3" height="24" rx="1.5" fill="#ffffff" stroke="#e74c8c" stroke-width="0.5"/>
+  <circle cx="112" cy="80" r="3.5" fill="#ffffff" stroke="#e74c8c" stroke-width="0.5"/>
+
+  <!-- Pole 5 at x=141 -->
+  <ellipse cx="141" cy="104" rx="5" ry="3" fill="#aaaaaa"/>
+  <rect x="139.5" y="80" width="3" height="24" rx="1.5" fill="#ffffff" stroke="#e74c8c" stroke-width="0.5"/>
+  <circle cx="141" cy="80" r="3.5" fill="#e74c8c" stroke="#c41e3a" stroke-width="0.5"/>
+
+  <!-- Pole 6 at x=170 -->
+  <ellipse cx="170" cy="104" rx="5" ry="3" fill="#aaaaaa"/>
+  <rect x="168.5" y="80" width="3" height="24" rx="1.5" fill="#ffffff" stroke="#e74c8c" stroke-width="0.5"/>
+  <circle cx="170" cy="80" r="3.5" fill="#ffffff" stroke="#e74c8c" stroke-width="0.5"/>
+</svg>

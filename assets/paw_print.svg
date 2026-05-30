@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- Dog paw print: main pad + 4 toes -->
+  <!-- Main pad (large oval at bottom) -->
+  <path d="M100 155
+           C 120 155, 135 142, 135 125
+           C 135 108, 120 100, 100 100
+           C 80 100, 65 108, 65 125
+           C 65 142, 80 155, 100 155 Z"
+        fill="#F5F5F5" stroke="#9E9E9E" stroke-width="6" stroke-linejoin="round"/>
+  <!-- Toe 1 (top-left) -->
+  <ellipse cx="72" cy="78" rx="16" ry="14" fill="#F5F5F5" stroke="#9E9E9E" stroke-width="5"/>
+  <!-- Toe 2 (top-center-left) -->
+  <ellipse cx="100" cy="68" rx="16" ry="14" fill="#F5F5F5" stroke="#9E9E9E" stroke-width="5"/>
+  <!-- Toe 3 (top-center-right) -->
+  <ellipse cx="128" cy="78" rx="16" ry="14" fill="#F5F5F5" stroke="#9E9E9E" stroke-width="5"/>
+  <!-- Toe 4 (side-right, slightly lower) -->
+  <ellipse cx="150" cy="108" rx="14" ry="12" fill="#F5F5F5" stroke="#9E9E9E" stroke-width="5"/>
+</svg>

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- Ground base -->
+  <rect x="20" y="150" width="160" height="4" rx="2" fill="#4A2A10" opacity="0.3"/>
+
+  <!-- Left standard (wing/pole) -->
+  <rect x="52" y="70" width="8" height="80" rx="3" fill="#8B5A2B" stroke="#4A2A10" stroke-width="0.8"/>
+  <!-- Left standard cap -->
+  <circle cx="56" cy="70" r="5" fill="#c41e3a" stroke="#8B0000" stroke-width="0.5"/>
+
+  <!-- Right standard (wing/pole) -->
+  <rect x="140" y="70" width="8" height="80" rx="3" fill="#8B5A2B" stroke="#4A2A10" stroke-width="0.8"/>
+  <!-- Right standard cap -->
+  <circle cx="144" cy="70" r="5" fill="#c41e3a" stroke="#8B0000" stroke-width="0.5"/>
+
+  <!-- Cross bar (jump bar) -->
+  <rect x="56" y="106" width="88" height="8" rx="2" fill="#ffffff" stroke="#cccccc" stroke-width="0.5"/>
+
+  <!-- Red stripes on jump bar -->
+  <rect x="56" y="106" width="12" height="8" fill="#c41e3a"/>
+  <rect x="76" y="106" width="12" height="8" fill="#c41e3a"/>
+  <rect x="96" y="106" width="12" height="8" fill="#c41e3a"/>
+  <rect x="116" y="106" width="12" height="8" fill="#c41e3a"/>
+  <rect x="136" y="106" width="8" height="8" fill="#c41e3a"/>
+</svg>

@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- Kids modifier — three playful running silhouettes -->
+  <!-- Kid 1 (top-left, red shirt, running right) -->
+  <!-- Head -->
+  <circle cx="55" cy="75" r="9" fill="#FDBCB4" stroke="#C97B6B" stroke-width="0.6"/>
+  <!-- Body -->
+  <rect x="49" y="84" width="12" height="16" rx="3" fill="#FF6B6B" stroke="#CC4444" stroke-width="0.6"/>
+  <!-- Left arm back -->
+  <line x1="49" y1="87" x2="40" y2="94" stroke="#FDBCB4" stroke-width="3" stroke-linecap="round"/>
+  <!-- Right arm forward -->
+  <line x1="61" y1="87" x2="70" y2="82" stroke="#FDBCB4" stroke-width="3" stroke-linecap="round"/>
+  <!-- Left leg back -->
+  <line x1="52" y1="100" x2="44" y2="114" stroke="#3A6FD8" stroke-width="4" stroke-linecap="round"/>
+  <!-- Right leg forward -->
+  <line x1="58" y1="100" x2="68" y2="110" stroke="#3A6FD8" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- Kid 2 (right side, teal shirt, running left) -->
+  <!-- Head -->
+  <circle cx="148" cy="95" r="8" fill="#FDBCB4" stroke="#C97B6B" stroke-width="0.6"/>
+  <!-- Body -->
+  <rect x="142" y="103" width="11" height="14" rx="3" fill="#4ECDC4" stroke="#3BA89F" stroke-width="0.6"/>
+  <!-- Left arm forward -->
+  <line x1="142" y1="106" x2="134" y2="100" stroke="#FDBCB4" stroke-width="3" stroke-linecap="round"/>
+  <!-- Right arm back -->
+  <line x1="153" y1="106" x2="160" y2="112" stroke="#FDBCB4" stroke-width="3" stroke-linecap="round"/>
+  <!-- Left leg forward -->
+  <line x1="145" y1="117" x2="136" y2="128" stroke="#E8A030" stroke-width="3.5" stroke-linecap="round"/>
+  <!-- Right leg back -->
+  <line x1="150" y1="117" x2="158" y2="126" stroke="#E8A030" stroke-width="3.5" stroke-linecap="round"/>
+
+  <!-- Kid 3 (bottom, yellow shirt, running right, smaller/closer) -->
+  <!-- Head -->
+  <circle cx="88" cy="140" r="8" fill="#FDBCB4" stroke="#C97B6B" stroke-width="0.6"/>
+  <!-- Body -->
+  <rect x="82" y="148" width="11" height="13" rx="3" fill="#FFD93D" stroke="#CCAA00" stroke-width="0.6"/>
+  <!-- Left arm back -->
+  <line x1="82" y1="151" x2="74" y2="157" stroke="#FDBCB4" stroke-width="3" stroke-linecap="round"/>
+  <!-- Right arm forward -->
+  <line x1="93" y1="151" x2="100" y2="145" stroke="#FDBCB4" stroke-width="3" stroke-linecap="round"/>
+  <!-- Left leg back -->
+  <line x1="85" y1="161" x2="78" y2="174" stroke="#3A6FD8" stroke-width="3.5" stroke-linecap="round"/>
+  <!-- Right leg forward -->
+  <line x1="90" y1="161" x2="98" y2="170" stroke="#3A6FD8" stroke-width="3.5" stroke-linecap="round"/>
+
+  <!-- Ground shadow ellipses -->
+  <ellipse cx="56" cy="120" rx="14" ry="4" fill="#1A0A00" opacity="0.15"/>
+  <ellipse cx="148" cy="134" rx="12" ry="3.5" fill="#1A0A00" opacity="0.15"/>
+  <ellipse cx="88" cy="180" rx="12" ry="3.5" fill="#1A0A00" opacity="0.15"/>
+
+  <!-- Small motion lines behind kid 1 -->
+  <line x1="38" y1="85" x2="30" y2="83" stroke="#FFD93D" stroke-width="1.5" stroke-linecap="round" opacity="0.6"/>
+  <line x1="37" y1="90" x2="29" y2="90" stroke="#FFD93D" stroke-width="1.5" stroke-linecap="round" opacity="0.6"/>
+  <line x1="38" y1="95" x2="30" y2="97" stroke="#FFD93D" stroke-width="1.5" stroke-linecap="round" opacity="0.6"/>
+</svg>

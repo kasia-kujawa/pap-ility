@@ -111,6 +111,44 @@ class GameScene extends Phaser.Scene {
     super('GameScene');
   }
 
+  preload() {
+    const assets = window.ASSETS || window.ASSETS_ASSETS || {};
+    const dogKeys = ['dog_body', 'dog_head', 'dog_ear_left', 'dog_ear_right', 'dog_tail', 'dog_leg_1', 'dog_leg_2'];
+    for (const key of dogKeys) {
+      if (assets[key]) {
+        this.load.svg(key, assets[key], { width: 128, height: 128 });
+      }
+    }
+    // Load obstacle and finish flag SVG textures
+    const obstacleKeys = ['obstacle_jump', 'obstacle_tunnel', 'obstacle_ctunnel', 'obstacle_dogwalk', 'obstacle_aframe', 'obstacle_weave', 'obstacle_seesaw', 'finish_flag'];
+    for (const key of obstacleKeys) {
+      if (assets[key]) {
+        this.load.svg(key, assets[key], { width: 128, height: 128 });
+      }
+    }
+    // Load modifier SVG textures
+    const modifierKeys = ['mud', 'wet_grass', 'kids'];
+    for (const key of modifierKeys) {
+      if (assets[key]) {
+        this.load.svg(key, assets[key], { width: 128, height: 128 });
+      }
+    }
+    // Load FX/generic particle SVG textures
+    const fxKeys = ['sparkle', 'particle', 'trail_boost', 'paw_print'];
+    for (const key of fxKeys) {
+      if (assets[key]) {
+        this.load.svg(key, assets[key], { width: 64, height: 64 });
+      }
+    }
+    // Load UI icon SVG textures
+    const uiKeys = ['timer_icon', 'fault_icon', 'boost_icon'];
+    for (const key of uiKeys) {
+      if (assets[key]) {
+        this.load.svg(key, assets[key], { width: 128, height: 128 });
+      }
+    }
+  }
+
   create() {
     // Clean up DOM listener from any previous run
     this._cleanupDomRestart();
@@ -153,15 +191,19 @@ class GameScene extends Phaser.Scene {
 
     this.drawGrass();
     this.drawCoursePath();
-    this.createModifierGraphics();
+    this.createModifierSprites();
     this.createFinishGateGraphics();
 
-    this.obstacleGraphics = [];
-    courseObs.forEach(ob => {
-      const g = this.add.graphics();
-      this.drawObstacle(g, ob);
-      this.obstacleGraphics.push(g);
+    this.obstacleSprites = [];
+    courseObs.forEach((ob, i) => {
+      const typeMap = { jump: 'obstacle_jump', tunnel: 'obstacle_tunnel', ctunnel: 'obstacle_ctunnel', aframe: 'obstacle_aframe', dogwalk: 'obstacle_dogwalk', seesaw: 'obstacle_seesaw', weave: 'obstacle_weave' };
+      const key = typeMap[ob.type] || 'obstacle_jump';
+      const sprite = this.add.image(ob.cx, ob.cy, key).setDepth(10).setOrigin(0.5).setRotation(ob.angle).setScale(1.0);
+      this.obstacleSprites.push(sprite);
     });
+
+    // Create finish gate sprite
+    this.finishSprite = this.add.image(finishGate.cx, finishGate.cy, 'finish_flag').setDepth(10).setOrigin(0.5).setRotation(finishGate.angle).setScale(1.0);
 
     this.dogBody = this.add.circle(1150, 840, 10, 0x000000, 0);
     this.physics.add.existing(this.dogBody);
@@ -173,8 +215,31 @@ class GameScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, CW, CH);
 
     this.dogGfx = this.add.graphics();
-    this.pawGfx = this.add.graphics();
-    this.particleGfx = this.add.graphics();
+    this.dogContainer = this.add.container(this.dogBody.x, this.dogBody.y).setDepth(20);
+    const dogScale = 0.6;
+    this.dogBodySprite = this.add.sprite(0, 0, 'dog_body').setOrigin(0.5).setScale(dogScale);
+    this.dogLegs = this.add.sprite(0, 1, 'dog_leg_1').setOrigin(0.5).setScale(dogScale);
+    this.dogTail = this.add.sprite(0, 27, 'dog_tail').setOrigin(0.5).setScale(dogScale * 1.2);
+    this.dogTail.setRotation(Math.PI);
+    // Head sprite — 2x body scale for a prominent Papillon head
+    const headScale = dogScale * 0.67;
+    this.dogHeadSprite = this.add.sprite(0, -28, 'dog_head').setOrigin(0.5).setScale(headScale);
+    // Ears attach to the head
+    this.dogEarLeft = this.add.sprite(-10, -32, 'dog_ear_left').setOrigin(0.5).setScale(headScale * 0.85);
+    this.dogEarRight = this.add.sprite(10, -32, 'dog_ear_right').setOrigin(0.5).setScale(headScale * 0.85);
+    this.dogContainer.add([this.dogLegs, this.dogBodySprite, this.dogTail, this.dogHeadSprite, this.dogEarLeft, this.dogEarRight]);
+    // Paw print sprite pool — reuse up to 30 sprites for trailing paw prints
+    this.pawSprites = [];
+    for (let i = 0; i < 30; i++) {
+      const s = this.add.image(0, 0, 'paw_print').setDepth(6).setVisible(false);
+      this.pawSprites.push(s);
+    }
+    // Particle sprite pool — reuse up to 100 sprites for all particle effects
+    this.particleSprites = [];
+    for (let i = 0; i < 400; i++) {
+      const s = this.add.image(0, 0, 'particle').setDepth(15).setVisible(false);
+      this.particleSprites.push(s);
+    }
     this.distanceLineGfx = this.add.graphics();
     this.ghostGfx = this.add.graphics();
     this.kidsHalo = this.add.graphics();
@@ -204,13 +269,28 @@ class GameScene extends Phaser.Scene {
   }
 
   createHUD() {
-    this.add.rectangle(100, 45, 210, 65, 0xffffff, 0.95).setStrokeStyle(1, 0x000000, 0.1).setDepth(100);
-    this.add.text(22, 20, 'OBSTACLE', { fontSize: '11px', fontFamily: 'Segoe UI, Arial, sans-serif', color: '#666666', fontStyle: 'bold' }).setDepth(100);
-    this.obsCountText = this.add.text(22, 34, '0 / 16', { fontSize: '22px', fontFamily: 'Segoe UI, Arial, sans-serif', color: '#2d5a27', fontStyle: 'bold' }).setDepth(100);
-    this.add.text(88, 20, 'FAULTS', { fontSize: '11px', fontFamily: 'Segoe UI, Arial, sans-serif', color: '#666666', fontStyle: 'bold' }).setDepth(100);
-    this.faultsText = this.add.text(88, 34, '0', { fontSize: '22px', fontFamily: 'Segoe UI, Arial, sans-serif', color: '#d9534f', fontStyle: 'bold' }).setDepth(100);
-    this.add.text(148, 20, 'TIME', { fontSize: '11px', fontFamily: 'Segoe UI, Arial, sans-serif', color: '#666666', fontStyle: 'bold' }).setDepth(100);
-    this.timerText = this.add.text(148, 34, '--', { fontSize: '22px', fontFamily: 'Segoe UI, Arial, sans-serif', color: '#d9534f', fontStyle: 'bold' }).setDepth(100);
+    // HUD panel: left stat block (OBSTACLE | FAULTS | TIME) — 3 columns, 100px each
+    const colW = 100, panelW = colW * 3, panelH = 55;
+    const panelX = panelW / 2 + 8, panelY = 38;
+    this.add.rectangle(panelX, panelY, panelW, panelH, 0xffffff, 0.95).setStrokeStyle(1, 0x000000, 0.1).setDepth(100);
+
+    // Column 1: OBSTACLE (x = 12)
+    const c1 = 12;
+    this.add.image(c1 - 8, 40, 'timer_icon').setDepth(101).setScale(0.22).setOrigin(0, 0.5);
+    this.add.text(c1 + 28, 16, 'OBSTACLE', { fontSize: '11px', fontFamily: 'Segoe UI, Arial, sans-serif', color: '#666666', fontStyle: 'bold' }).setDepth(100);
+    this.obsCountText = this.add.text(c1 + 28, 32, '0 / 16', { fontSize: '20px', fontFamily: 'Segoe UI, Arial, sans-serif', color: '#2d5a27', fontStyle: 'bold' }).setDepth(100);
+
+    // Column 2: FAULTS (x = 112)
+    const c2 = c1 + colW;
+    this.faultIcon = this.add.image(c2 - 8, 40, 'fault_icon').setDepth(101).setScale(0.22).setOrigin(0, 0.5);
+    this.add.text(c2 + 28, 16, 'FAULTS', { fontSize: '11px', fontFamily: 'Segoe UI, Arial, sans-serif', color: '#666666', fontStyle: 'bold' }).setDepth(100);
+    this.faultsText = this.add.text(c2 + 28, 32, '0', { fontSize: '20px', fontFamily: 'Segoe UI, Arial, sans-serif', color: '#d9534f', fontStyle: 'bold' }).setDepth(100);
+
+    // Column 3: TIME (x = 212)
+    const c3 = c1 + colW * 2;
+    this.timerIcon = this.add.image(c3 - 8, 40, 'timer_icon').setDepth(101).setScale(0.22).setOrigin(0, 0.5);
+    this.add.text(c3 + 28, 16, 'TIME', { fontSize: '11px', fontFamily: 'Segoe UI, Arial, sans-serif', color: '#666666', fontStyle: 'bold' }).setDepth(100);
+    this.timerText = this.add.text(c3 + 28, 32, '--', { fontSize: '20px', fontFamily: 'Segoe UI, Arial, sans-serif', color: '#d9534f', fontStyle: 'bold' }).setDepth(100);
 
     this.modifierLabelText = this.add.text(CW / 2, 80, '', { fontSize: '18px', fontFamily: 'Segoe UI, Arial, sans-serif', color: '#ffffff', fontStyle: 'bold' }).setOrigin(0.5).setDepth(100).setVisible(false);
 
@@ -218,12 +298,16 @@ class GameScene extends Phaser.Scene {
     this.add.text(CW - 150, 25, 'NEXT', { fontSize: '11px', fontFamily: 'Segoe UI, Arial, sans-serif', color: '#666666', fontStyle: 'bold' }).setDepth(100);
     this.nextObsNameText = this.add.text(CW - 150, 40, '#1 - Jump', { fontSize: '15px', fontFamily: 'Segoe UI, Arial, sans-serif', color: '#333333', fontStyle: 'bold' }).setDepth(100);
 
-    this.boostBarBg = this.add.rectangle(95, 105, 176, 50, 0xffffff, 0.92).setStrokeStyle(1, 0x000000, 0.1).setDepth(100).setVisible(false);
-    this.boostLabelText = this.add.text(15, 93, 'BOOST', { fontSize: '11px', fontFamily: 'Segoe UI, Arial, sans-serif', color: '#666666', fontStyle: 'bold' }).setDepth(100).setVisible(false);
-    this.boostBarTrack = this.add.rectangle(95, 105, 160, 18, 0xdddddd, 1).setDepth(100).setVisible(false);
+    // Boost panel with icon
+    this.boostBarBg = this.add.rectangle(100, 105, 176, 50, 0xffffff, 0.92).setStrokeStyle(1, 0x000000, 0.1).setDepth(100).setVisible(false);
+    // Boost icon (lightning bolt) — placed left of the label text
+    this.boostIcon = this.add.image(12, 105, 'boost_icon').setDepth(101).setScale(0.22).setOrigin(0, 0.5);
+    this.boostLabelText = this.add.text(30, 93, 'BOOST', { fontSize: '11px', fontFamily: 'Segoe UI, Arial, sans-serif', color: '#666666', fontStyle: 'bold' }).setDepth(100).setVisible(false);
+    // Shift boost track slightly right to make room for icon; bar is still procedural (dynamic width)
+    this.boostBarTrack = this.add.rectangle(100, 105, 160, 18, 0xdddddd, 1).setDepth(100).setVisible(false);
     this.boostBarFillGfx = this.add.graphics().setDepth(101).setVisible(false);
-    this.boostBarLabel = this.add.text(95, 105, 'READY', { fontSize: '12px', fontFamily: 'Segoe UI, Arial, sans-serif', color: '#ffffff', fontStyle: 'bold' }).setOrigin(0.5, 0.5).setDepth(102).setVisible(false);
-    this.boostBarHint = this.add.text(95, 122, '[ SPACE ]', { fontSize: '10px', fontFamily: 'Segoe UI, Arial, sans-serif', color: '#999999' }).setOrigin(0.5).setDepth(100).setVisible(false);
+    this.boostBarLabel = this.add.text(100, 105, 'READY', { fontSize: '12px', fontFamily: 'Segoe UI, Arial, sans-serif', color: '#ffffff', fontStyle: 'bold' }).setOrigin(0.5, 0.5).setDepth(102).setVisible(false);
+    this.boostBarHint = this.add.text(100, 122, '[ SPACE ]', { fontSize: '10px', fontFamily: 'Segoe UI, Arial, sans-serif', color: '#999999' }).setOrigin(0.5).setDepth(100).setVisible(false);
   }
 
   showBoostBar() {
@@ -259,12 +343,14 @@ class GameScene extends Phaser.Scene {
 
     const g = this.boostBarFillGfx;
     g.clear();
-    const fillW = Math.max(0, bw * fillRatio);
+    // Bar starts at x=20 (with icon width ~14px offset from track x=20) and width=160
+    const barStartX = 20, barStartY = 96, barW = 160, barH = 18;
+    const fillW = Math.max(0, barW * fillRatio);
     if (fillW > 0) {
       g.fillStyle(fillColor, 1);
-      g.fillRect(bx, by, fillW, bh);
+      g.fillRect(barStartX, barStartY, fillW, barH);
       g.fillStyle(0xffffff, 0.25);
-      g.fillRect(bx, by, fillW, bh * 0.45);
+      g.fillRect(barStartX, barStartY, fillW, barH * 0.45);
     }
     this.boostBarLabel.setText(labelText);
     this.boostBarLabel.setColor(labelColor);
@@ -384,215 +470,91 @@ class GameScene extends Phaser.Scene {
     }
   }
 
-  drawObstacle(g, ob) {
-    const done = this.completedObs ? this.completedObs.has(ob.num) : false;
-    g.clear();
-    switch (ob.type) {
-      case 'jump': this.drawJump(g, ob, done, false); break;
-      case 'tunnel': this.drawTunnel(g, ob, done, false); break;
-      case 'ctunnel': this.drawCTunnel(g, ob, done, false); break;
-      case 'aframe': this.drawAFrame(g, ob, done, false); break;
-      case 'dogwalk': this.drawDogwalk(g, ob, done, false); break;
-      case 'seesaw': this.drawSeesaw(g, ob, done, false); break;
-      case 'weave': this.drawWeave(g, ob, done, false); break;
+  drawObstacle(sprite, ob, index) {
+    const done = this.completedObs.has(ob.num);
+    const isNext = !this.finished && this.currentObs < courseObs.length && ob.num === courseObs[this.currentObs].num;
+
+    // Update position and rotation from obstacle data
+    sprite.setPosition(ob.cx, ob.cy);
+    sprite.setRotation(ob.angle);
+
+    // Apply visual state tinting
+    if (done) {
+      sprite.setTint(0x999999);
+      sprite.setAlpha(1);
+    } else if (isNext) {
+      const pulse = 0.8 + Math.sin(this.time.now * 0.005) * 0.2;
+      sprite.setTint(0xffd700);
+      sprite.setAlpha(pulse);
+    } else {
+      sprite.clearTint();
+      sprite.setAlpha(1);
     }
+
+    // Update number label
+    this.updateObstacleLabel(ob.num, ob.cx, ob.cy - 22, done, isNext);
   }
 
   redrawObstacles() {
     courseObs.forEach((ob, i) => {
-      const g = this.obstacleGraphics[i];
-      const done = this.completedObs.has(ob.num);
-      const next = !this.finished && this.currentObs < courseObs.length && ob.num === courseObs[this.currentObs].num;
-      g.clear();
-      switch (ob.type) {
-        case 'jump': this.drawJump(g, ob, done, next); break;
-        case 'tunnel': this.drawTunnel(g, ob, done, next); break;
-        case 'ctunnel': this.drawCTunnel(g, ob, done, next); break;
-        case 'aframe': this.drawAFrame(g, ob, done, next); break;
-        case 'dogwalk': this.drawDogwalk(g, ob, done, next); break;
-        case 'seesaw': this.drawSeesaw(g, ob, done, next); break;
-        case 'weave': this.drawWeave(g, ob, done, next); break;
+      const sprite = this.obstacleSprites[i];
+      if (sprite) {
+        this.drawObstacle(sprite, ob, i);
       }
     });
   }
 
-  drawLabel(g, x, y, num, done, next) {
-    const r = next ? 14 : 11;
-    if (next) {
-      const pulse = 0.3 + Math.sin(this.time.now * 0.006) * 0.15;
-      g.fillStyle(0xffdd32, pulse);
-      g.fillCircle(x, y - 22, r + 8 + Math.sin(this.time.now * 0.006) * 3);
-    }
-    g.fillStyle(done ? 0x66aa66 : next ? 0xffd200 : 0xffffff, next ? 1 : 0.85);
-    g.fillCircle(x, y - 22, r);
-    g.lineStyle(2, done ? 0x44aa44 : next ? 0xc9a200 : 0x000000, done || next ? 1 : 0.3);
-    g.strokeCircle(x, y - 22, r);
-
+  updateObstacleLabel(num, x, y, done, isNext) {
     if (!this._labelTexts) this._labelTexts = [];
     const existing = this._labelTexts.find(t => t._obNum === num);
+    const fontSize = isNext ? 13 : 10;
+    const textColor = done ? '#ffffff' : '#333333';
     if (existing) {
-      existing.setPosition(x, y - 21);
-      existing.setColor(done ? '#ffffff' : '#333333');
-      existing.setFontSize(next ? 13 : 10);
+      existing.setPosition(x, y);
+      existing.setColor(textColor);
+      existing.setFontSize(fontSize);
     } else {
-      const t = this.add.text(x, y - 21, String(num), {
-        fontSize: (next ? 13 : 10) + 'px', fontFamily: 'Arial',
-        color: done ? '#ffffff' : '#333333', fontStyle: 'bold'
+      const t = this.add.text(x, y, String(num), {
+        fontSize: fontSize + 'px', fontFamily: 'Arial',
+        color: textColor, fontStyle: 'bold'
       }).setOrigin(0.5).setDepth(15);
       t._obNum = num;
       this._labelTexts.push(t);
     }
 
+    // Update label background circle
+    if (!this._labelCircles) this._labelCircles = [];
+    let circle = this._labelCircles.find(c => c._obNum === num);
+    const r = isNext ? 14 : 11;
+    if (!circle) {
+      circle = this.add.graphics().setDepth(14);
+      circle._obNum = num;
+      this._labelCircles.push(circle);
+    }
+    circle.clear();
+    const pulse = isNext ? 0.3 + Math.sin(this.time.now * 0.006) * 0.15 : 0;
+    if (isNext) {
+      circle.fillStyle(0xffdd32, pulse);
+      circle.fillCircle(x, y, r + 8 + Math.sin(this.time.now * 0.006) * 3);
+    }
+    circle.fillStyle(done ? 0x66aa66 : isNext ? 0xffd200 : 0xffffff, isNext ? 1 : 0.85);
+    circle.fillCircle(x, y, r);
+    circle.lineStyle(2, done ? 0x44aa44 : isNext ? 0xc9a200 : 0x000000, done || isNext ? 1 : 0.3);
+    circle.strokeCircle(x, y, r);
+
+    // Show checkmark on completed obstacles
     if (done) {
-      g.lineStyle(2.5, 0xffffff, 1);
-      g.beginPath();
-      g.moveTo(x - 4, y - 21);
-      g.lineTo(x - 1, y - 18);
-      g.lineTo(x + 5, y - 25);
-      g.strokePath();
+      circle.lineStyle(2.5, 0xffffff, 1);
+      circle.beginPath();
+      circle.moveTo(x - 4, y);
+      circle.lineTo(x - 1, y + 3);
+      circle.lineTo(x + 5, y - 4);
+      circle.strokePath();
     }
   }
 
-  drawJump(g, ob, done, next) {
-    g.save();
-    g.translateCanvas(ob.cx, ob.cy);
-    g.rotateCanvas(ob.angle);
-    const w = 50, h = 6;
-    g.fillStyle(done ? 0xaaaaaa : 0x8B5A2B, 1);
-    g.fillRect(-w / 2 - 4, -12, 6, 24);
-    g.fillRect(w / 2 - 2, -12, 6, 24);
-    g.fillStyle(done ? 0xcccccc : 0xc41e3a, 1);
-    g.fillCircle(-w / 2 - 1, -12, 4);
-    g.fillCircle(w / 2 + 1, -12, 4);
-    g.fillStyle(done ? 0xcccccc : 0xffffff, 1);
-    g.fillRect(-w / 2, -h / 2, w, h);
-    if (!done) {
-      g.fillStyle(0xc41e3a, 1);
-      for (let i = 0; i < w; i += 14) g.fillRect(-w / 2 + i, -h / 2, 7, h);
-    }
-    g.restore();
-    this.drawLabel(g, ob.cx, ob.cy, ob.num, done, next);
-  }
-
-  drawTunnel(g, ob, done, next) {
-    const len = 70, r = 16;
-    g.save();
-    g.translateCanvas(ob.cx, ob.cy);
-    g.rotateCanvas(ob.angle);
-    g.fillStyle(done ? 0xaaaabb : 0x5bc0de, 1);
-    g.fillEllipse(0, 0, len, r * 2);
-    g.lineStyle(2, done ? 0xffffff : 0xffffff, done ? 0.2 : 0.4);
-    for (let i = -len / 2 + 12; i < len / 2 - 8; i += 14) {
-      g.strokeEllipse(i, 0, 6, r * 0.8 * 2);
-    }
-    g.fillStyle(done ? 0x555566 : 0x1a3040, 1);
-    g.fillEllipse(-len / 2, 0, 12, r * 0.85 * 2);
-    g.fillEllipse(len / 2, 0, 12, r * 0.85 * 2);
-    g.restore();
-    this.drawLabel(g, ob.cx, ob.cy, ob.num, done, next);
-  }
-
-  drawCTunnel(g, ob, done, next) {
-    const r = 50;
-    g.save();
-    g.translateCanvas(ob.cx, ob.cy);
-    g.lineStyle(24, done ? 0xaab : 0xf5a623, 1);
-    g.beginPath();
-    g.arc(0, 0, r, ob.angle - 1.2, ob.angle + 1.2, false);
-    g.strokePath();
-    g.lineStyle(16, done ? 0x778 : 0xc47800, 1);
-    g.beginPath();
-    g.arc(0, 0, r, ob.angle - 1.1, ob.angle + 1.1, false);
-    g.strokePath();
-    g.lineStyle(2, done ? 0xffffff : 0xffffff, done ? 0.15 : 0.35);
-    for (let a = ob.angle - 1; a < ob.angle + 1; a += 0.3) {
-      g.beginPath();
-      g.arc(0, 0, r, a - 0.05, a + 0.05, false);
-      g.strokePath();
-    }
-    g.restore();
-    this.drawLabel(g, ob.cx, ob.cy, ob.num, done, next);
-  }
-
-  drawAFrame(g, ob, done, next) {
-    const w = 55, h = 35;
-    g.save();
-    g.translateCanvas(ob.cx, ob.cy);
-    g.rotateCanvas(ob.angle);
-    g.fillStyle(done ? 0xbbbbbb : 0xe85aab, 1);
-    g.fillTriangle(-w / 2, h / 2, 0, -h / 2, 0, h / 2);
-    g.fillStyle(done ? 0xcccccc : 0xff69b4, 1);
-    g.fillTriangle(0, -h / 2, w / 2, h / 2, 0, h / 2);
-    g.lineStyle(1.5, 0xffffff, done ? 0.15 : 0.3);
-    for (let i = 1; i <= 3; i++) {
-      const t = i / 4;
-      g.beginPath(); g.moveTo(-w / 2 * (1 - t), h / 2 - h * t); g.lineTo(-w / 2 * (1 - t), h / 2); g.strokePath();
-      g.beginPath(); g.moveTo(w / 2 * (1 - t), h / 2 - h * t); g.lineTo(w / 2 * (1 - t), h / 2); g.strokePath();
-    }
-    g.fillStyle(done ? 0xdddddd : 0xe6c200, 1);
-    g.fillRect(-w / 2, h / 2 - 8, 14, 8);
-    g.fillRect(w / 2 - 14, h / 2 - 8, 14, 8);
-    g.fillCircle(0, -h / 2, 5);
-    g.restore();
-    this.drawLabel(g, ob.cx, ob.cy, ob.num, done, next);
-  }
-
-  drawDogwalk(g, ob, done, next) {
-    const w = 80, h = 10;
-    g.save();
-    g.translateCanvas(ob.cx, ob.cy);
-    g.rotateCanvas(ob.angle);
-    g.fillStyle(done ? 0x999999 : 0x5a3d1a, 1);
-    g.fillRect(-w / 2 + 10, -3, 6, 12);
-    g.fillRect(w / 2 - 16, -3, 6, 12);
-    g.fillStyle(done ? 0xbbbbbb : 0x4aa8c7, 1);
-    g.fillRect(-w / 2, -h / 2, w, h);
-    g.fillStyle(done ? 0xffffff : 0xffffff, done ? 0.1 : 0.3);
-    g.fillRect(-w / 2, -h / 2, w, 3);
-    g.fillStyle(done ? 0xdddddd : 0xe6c200, 1);
-    g.fillRect(-w / 2, -h / 2, 14, h);
-    g.fillRect(w / 2 - 14, -h / 2, 14, h);
-    g.restore();
-    this.drawLabel(g, ob.cx, ob.cy, ob.num, done, next);
-  }
-
-  drawSeesaw(g, ob, done, next) {
-    const w = 70, h = 10;
-    g.save();
-    g.translateCanvas(ob.cx, ob.cy);
-    g.rotateCanvas(ob.angle);
-    g.fillStyle(done ? 0x999999 : 0x4a3520, 1);
-    g.fillTriangle(-8, 10, 8, 10, 0, -4);
-    g.fillStyle(done ? 0xaaaaaa : 0x333333, 1);
-    g.fillCircle(0, -1, 5);
-    g.fillStyle(done ? 0xbbbbbb : 0x48D1CC, 1);
-    g.fillRect(-w / 2, -h / 2, w, h);
-    g.fillStyle(done ? 0xffffff : 0xffffff, done ? 0.1 : 0.3);
-    g.fillRect(-w / 2, -h / 2, w, 3);
-    g.fillStyle(done ? 0xdddddd : 0xe6c200, 1);
-    g.fillRect(-w / 2, -h / 2, 14, h);
-    g.fillRect(w / 2 - 14, -h / 2, 14, h);
-    g.restore();
-    this.drawLabel(g, ob.cx, ob.cy, ob.num, done, next);
-  }
-
-  drawWeave(g, ob, done, next) {
-    const n = 6, sp = 10, tw = (n - 1) * sp;
-    g.save();
-    g.translateCanvas(ob.cx, ob.cy);
-    g.rotateCanvas(ob.angle);
-    for (let i = 0; i < n; i++) {
-      const px = -tw / 2 + i * sp;
-      g.fillStyle(done ? 0x999999 : 0xaaaaaa, 1);
-      g.fillEllipse(px, 4, 6, 3);
-      g.fillStyle(done ? 0xcccccc : (i % 2 === 0 ? 0xe74c8c : 0xffffff), 1);
-      g.fillRect(px - 1.5, -12, 3, 16);
-      g.fillStyle(done ? 0xdddddd : (i % 2 === 0 ? 0xffffff : 0xe74c8c), 1);
-      g.fillCircle(px, -12, 2.5);
-    }
-    g.restore();
-    this.drawLabel(g, ob.cx, ob.cy - 20, ob.num, done, next);
-  }
+  // drawJump, drawTunnel, drawCTunnel, drawAFrame, drawDogwalk, drawSeesaw, drawWeave
+  // are no longer needed — all obstacle rendering is now sprite-based via drawObstacle().
 
   createFinishGateGraphics() {
     this.finishGateGfx = this.add.graphics();
@@ -762,37 +724,26 @@ class GameScene extends Phaser.Scene {
   }
 
   drawFinishGateOb() {
-    const g = this.finishGateGfx;
+    const sprite = this.finishSprite;
     const ob = finishGate;
-    const w = 50;
-    const pulse = this.allDone && !this.finished ? 0.6 + Math.sin(this.time.now * 0.008) * 0.4 : 0;
-    g.clear();
-    g.save();
-    g.translateCanvas(ob.cx, ob.cy);
-    g.rotateCanvas(ob.angle);
+    sprite.setPosition(ob.cx, ob.cy);
+    sprite.setRotation(ob.angle);
 
-    if (this.allDone && !this.finished) {
-      g.fillStyle(0xff3232, 0.15 + pulse * 0.15);
-      g.fillEllipse(0, 0, w + 30, 40);
+    if (this.finished) {
+      sprite.setTint(0x888888);
+      sprite.setAlpha(1);
+    } else if (this.allDone && !this.finished) {
+      const pulse = 0.8 + Math.sin(this.time.now * 0.008) * 0.2;
+      sprite.setTint(0xff3232);
+      sprite.setAlpha(pulse);
+    } else {
+      sprite.clearTint();
+      sprite.setAlpha(1);
     }
 
-    g.fillStyle(this.finished ? 0x666666 : 0xc41e3a, 1);
-    g.fillRect(-w / 2 - 3, -14, 6, 28);
-    g.fillRect(w / 2 - 3, -14, 6, 28);
-    g.fillStyle(this.finished ? 0x888888 : 0xffffff, 1);
-    g.fillRect(-w / 2, -4, w, 8);
-    if (!this.finished) {
-      g.fillStyle(0xc41e3a, 1);
-      for (let i = 0; i < w; i += 12) g.fillRect(-w / 2 + i, -4, 6, 8);
+    if (this._finishGateText) {
+      this._finishGateText.setColor(this.finished ? '#aaaaaa' : '#ffffff');
     }
-    g.restore();
-
-    if (!this._finishGateText) {
-      this._finishGateText = this.add.text(ob.cx, ob.cy + 16, 'FINISH', {
-        fontSize: '8px', fontFamily: 'Arial', color: '#ffffff', fontStyle: 'bold'
-      }).setOrigin(0.5).setDepth(15);
-    }
-    this._finishGateText.setColor(this.finished ? '#aaaaaa' : '#ffffff');
   }
 
   drawPapillon() {
@@ -809,8 +760,12 @@ class GameScene extends Phaser.Scene {
     const angle = this.dogState.angle;
     const rc = this.dogState.runCycle;
 
-    g.clear();
+    // Update sprite container position + rotation
+    this.dogContainer.setPosition(x, y);
+    this.dogContainer.setRotation(angle + Math.PI / 2);
 
+    // Boost glow (kept on graphics layer — behind sprites)
+    g.clear();
     if (this.dogState.boosting) {
       const pulse = 0.6 + Math.sin(this.time.now * 0.02) * 0.4;
       g.fillStyle(0xff8c00, 0.3 * pulse);
@@ -819,152 +774,36 @@ class GameScene extends Phaser.Scene {
       g.fillCircle(x, y, sz * 1.1);
     }
 
-    g.save();
-    g.translateCanvas(x, y);
-    g.rotateCanvas(angle + Math.PI / 2);
-
-    g.fillStyle(0x000000, 0.15);
-    g.fillEllipse(0, 4 * sz / 20, sz * 1.1 * 2, sz * 0.55 * 2);
-
-    g.save();
-    g.translateCanvas(0, sz * 0.9);
-    g.rotateCanvas(Math.sin(rc * 1.5) * 0.4);
-    g.fillStyle(0xffffff, 1);
-    g.fillEllipse(0, sz * 0.6, sz * 0.4 * 2, sz * 0.7 * 2);
-    g.fillStyle(0xd45500, 1);
-    g.fillEllipse(-sz * 0.08, sz * 0.45, sz * 0.18 * 2, sz * 0.35 * 2);
-    g.fillStyle(0xf8f4ef, 1);
-    g.fillEllipse(sz * 0.1, sz * 0.7, sz * 0.2 * 2, sz * 0.3 * 2);
-    g.restore();
-
-    const ls = Math.sin(rc) * (moving ? sz * 0.22 : sz * 0.04);
-    g.fillStyle(0xffffff, 1);
-    g.fillEllipse(-sz * 0.35, sz * 0.25 + ls, sz * 0.18 * 2, sz * 0.28 * 2);
-    g.fillEllipse(sz * 0.35, sz * 0.25 - ls, sz * 0.18 * 2, sz * 0.28 * 2);
-    g.fillStyle(0xe8e0d5, 1);
-    g.fillEllipse(-sz * 0.38, sz * 0.5 + ls, sz * 0.1 * 2, sz * 0.08 * 2);
-    g.fillEllipse(sz * 0.38, sz * 0.5 - ls, sz * 0.1 * 2, sz * 0.08 * 2);
-
-    g.fillStyle(0xffffff, 1);
-    g.fillEllipse(0, sz * 0.05, sz * 0.48 * 2, sz * 0.6 * 2);
-    g.fillStyle(0xd45500, 1);
-    g.fillEllipse(-sz * 0.15, sz * 0.1, sz * 0.2 * 2, sz * 0.25 * 2);
-    g.fillStyle(0xc24000, 1);
-    g.fillEllipse(sz * 0.18, -sz * 0.05, sz * 0.15 * 2, sz * 0.2 * 2);
-
-    const fl = Math.sin(rc + Math.PI) * (moving ? sz * 0.22 : sz * 0.04);
-    g.fillStyle(0xffffff, 1);
-    g.fillEllipse(-sz * 0.3, -sz * 0.35 + fl, sz * 0.15 * 2, sz * 0.25 * 2);
-    g.fillEllipse(sz * 0.3, -sz * 0.35 - fl, sz * 0.15 * 2, sz * 0.25 * 2);
-    g.fillStyle(0xe8e0d5, 1);
-    g.fillEllipse(-sz * 0.32, -sz * 0.58 + fl, sz * 0.09 * 2, sz * 0.07 * 2);
-    g.fillEllipse(sz * 0.32, -sz * 0.58 - fl, sz * 0.09 * 2, sz * 0.07 * 2);
-
-    g.fillStyle(0xffffff, 1);
-    g.fillEllipse(0, -sz * 0.55, sz * 0.42 * 2, sz * 0.22 * 2);
-    g.fillStyle(0xf5f0ea, 1);
-    g.fillEllipse(0, -sz * 0.5, sz * 0.35 * 2, sz * 0.15 * 2);
-
-    g.fillStyle(0xffffff, 1);
-    g.fillEllipse(0, -sz * 0.75, sz * 0.32 * 2, sz * 0.28 * 2);
-    g.fillStyle(0xd45500, 1);
-    g.fillEllipse(-sz * 0.12, -sz * 0.82, sz * 0.12 * 2, sz * 0.12 * 2);
-    g.fillEllipse(sz * 0.12, -sz * 0.82, sz * 0.12 * 2, sz * 0.12 * 2);
-    g.fillStyle(0xffffff, 1);
-    g.beginPath();
-    g.moveTo(-sz * 0.06, -sz * 0.95);
-    g.lineTo(0, -sz * 1.02);
-    g.lineTo(sz * 0.06, -sz * 0.95);
-    g.lineTo(sz * 0.04, -sz * 0.65);
-    g.lineTo(-sz * 0.04, -sz * 0.65);
-    g.closePath();
-    g.fillPath();
-
+    // Ear wiggle
     const ew = Math.sin(rc * 1.2) * 0.08;
+    this.dogEarLeft.setRotation(-0.5 + ew);
+    this.dogEarRight.setRotation(0.5 - ew);
 
-    g.save();
-    g.translateCanvas(-sz * 0.28, -sz * 0.88);
-    g.rotateCanvas(-0.5 + ew);
-    g.fillStyle(0xd45500, 1);
-    g.beginPath();
-    g.moveTo(0, 0);
-    g.lineTo(-sz * 0.35, -sz * 0.15);
-    g.lineTo(-sz * 0.55, -sz * 0.55);
-    g.lineTo(-sz * 0.2, -sz * 0.7);
-    g.lineTo(-sz * 0.05, -sz * 0.75);
-    g.lineTo(sz * 0.05, -sz * 0.5);
-    g.lineTo(0, -sz * 0.1);
-    g.closePath();
-    g.fillPath();
-    g.fillStyle(0xffffff, 1);
-    g.beginPath();
-    g.moveTo(-sz * 0.02, -sz * 0.05);
-    g.lineTo(-sz * 0.25, -sz * 0.2);
-    g.lineTo(-sz * 0.4, -sz * 0.45);
-    g.lineTo(-sz * 0.18, -sz * 0.55);
-    g.lineTo(-sz * 0.06, -sz * 0.58);
-    g.lineTo(sz * 0.02, -sz * 0.35);
-    g.lineTo(-sz * 0.02, -sz * 0.1);
-    g.closePath();
-    g.fillPath();
-    g.lineStyle(1.5, 0xffffff, 1);
-    g.beginPath(); g.moveTo(-sz * 0.3, -sz * 0.4); g.lineTo(-sz * 0.4, -sz * 0.15); g.strokePath();
-    g.beginPath(); g.moveTo(-sz * 0.35, -sz * 0.5); g.lineTo(-sz * 0.45, -sz * 0.25); g.strokePath();
-    g.restore();
+    // Tail wag (180° base rotation so plume hangs down/back)
+    const tw = Math.sin(rc * 1.5) * 0.4 + Math.PI;
+    this.dogTail.setRotation(tw);
 
-    g.save();
-    g.translateCanvas(sz * 0.28, -sz * 0.88);
-    g.rotateCanvas(0.5 - ew);
-    g.fillStyle(0xd45500, 1);
-    g.beginPath();
-    g.moveTo(0, 0);
-    g.lineTo(sz * 0.35, -sz * 0.15);
-    g.lineTo(sz * 0.55, -sz * 0.55);
-    g.lineTo(sz * 0.2, -sz * 0.7);
-    g.lineTo(sz * 0.05, -sz * 0.75);
-    g.lineTo(-sz * 0.05, -sz * 0.5);
-    g.lineTo(0, -sz * 0.1);
-    g.closePath();
-    g.fillPath();
-    g.fillStyle(0xffffff, 1);
-    g.beginPath();
-    g.moveTo(sz * 0.02, -sz * 0.05);
-    g.lineTo(sz * 0.25, -sz * 0.2);
-    g.lineTo(sz * 0.4, -sz * 0.45);
-    g.lineTo(sz * 0.18, -sz * 0.55);
-    g.lineTo(sz * 0.06, -sz * 0.58);
-    g.lineTo(-sz * 0.02, -sz * 0.35);
-    g.lineTo(sz * 0.02, -sz * 0.1);
-    g.closePath();
-    g.fillPath();
-    g.lineStyle(1.5, 0xffffff, 1);
-    g.beginPath(); g.moveTo(sz * 0.3, -sz * 0.4); g.lineTo(sz * 0.4, -sz * 0.15); g.strokePath();
-    g.beginPath(); g.moveTo(sz * 0.35, -sz * 0.5); g.lineTo(sz * 0.45, -sz * 0.25); g.strokePath();
-    g.restore();
+    // Leg frame cycling (only when moving)
+    const legFrame = moving && Math.sin(rc) >= 0 ? 'dog_leg_1' : 'dog_leg_2';
+    if (this.dogLegs.texture.key !== legFrame) {
+      this.dogLegs.setTexture(legFrame);
+    }
 
-    g.fillStyle(0x1a0a00, 1);
-    g.fillEllipse(-sz * 0.12, -sz * 0.72, sz * 0.06 * 2, sz * 0.07 * 2);
-    g.fillEllipse(sz * 0.12, -sz * 0.72, sz * 0.06 * 2, sz * 0.07 * 2);
-    g.fillStyle(0xffffff, 1);
-    g.fillCircle(-sz * 0.1, -sz * 0.74, sz * 0.025);
-    g.fillCircle(sz * 0.14, -sz * 0.74, sz * 0.025);
+    // Shadow beneath the dog
+    g.fillStyle(0x000000, 0.15);
+    g.fillEllipse(x, y + sz * 0.2, sz * 1.1, sz * 0.55);
 
-    g.fillStyle(0xfef9f5, 1);
-    g.fillEllipse(0, -sz * 0.6, sz * 0.1 * 2, sz * 0.09 * 2);
-    g.fillStyle(0x111111, 1);
-    g.fillEllipse(0, -sz * 0.64, sz * 0.045 * 2, sz * 0.035 * 2);
-    g.fillStyle(0x444444, 1);
-    g.fillCircle(-sz * 0.015, -sz * 0.65, sz * 0.015);
-
+    // Completed-obstacle smile
     if (this.completedObs.size > 0) {
+      const sx = x + Math.cos(angle + Math.PI / 2) * 0;
+      const sy = y + Math.sin(angle + Math.PI / 2) * 0;
       g.lineStyle(1, 0x4a2a10, 1);
       g.beginPath();
-      g.arc(0, -sz * 0.56, sz * 0.06, 0.3, Math.PI - 0.3, false);
+      g.arc(sx, sy - sz * 0.56, sz * 0.06, 0.3, Math.PI - 0.3, false);
       g.strokePath();
     }
 
-    g.restore();
-
+    // Boost ring
     if (this.dogState.boosting) {
       const t = this.dogState.boostTimer / BOOST_DURATION_MS;
       g.lineStyle(3, 0xffc800, 0.5 + t * 0.4);
@@ -1001,31 +840,54 @@ class GameScene extends Phaser.Scene {
   }
 
   drawParticles() {
-    const g = this.particleGfx;
-    g.clear();
-    this.particles.forEach(p => {
-      const a = p.life / p.maxLife;
-      const r = parseInt(p.color.slice(1, 3), 16);
-      const gv = parseInt(p.color.slice(3, 5), 16);
-      const b = parseInt(p.color.slice(5, 7), 16);
-      g.fillStyle((r << 16) | (gv << 8) | b, a);
-      g.fillCircle(p.x, p.y, p.size * a);
-    });
+    let i = 0;
+    for (const p of this.particles) {
+      if (p.life > 0) {
+        if (i >= this.particleSprites.length) break;
+        const sprite = this.particleSprites[i];
+        sprite.setPosition(p.x, p.y);
+        sprite.setAlpha(Math.max(0, p.life / p.maxLife));
+        // Parse color string to hex integer for tinting via setTint()
+        const colorStr = p.color || '#ffffff';
+        const tint = parseInt(colorStr.replace('#', ''), 16);
+        sprite.setTint(tint);
+        // Select texture by particle type marker
+        if (p.ptype === 'sparkle') {
+          sprite.setTexture('sparkle');
+        } else if (p.ptype === 'trail') {
+          sprite.setTexture('trail_boost');
+        } else {
+          sprite.setTexture('particle');
+        }
+        // Scale so a ~5px world-unit particle fills appropriately (texture ~64px)
+        sprite.setScale((p.size * 1.5) / 64);
+        sprite.setVisible(true);
+        i++;
+      }
+    }
+    // Hide any leftover sprites from previously larger particle counts
+    for (; i < this.particleSprites.length; i++) {
+      this.particleSprites[i].setVisible(false);
+    }
   }
 
   drawPawPrints() {
-    const g = this.pawGfx;
-    g.clear();
-    g.fillStyle(0x3a2a10, 0.13);
-    this.pawPrints.forEach(pp => {
-      g.save();
-      g.translateCanvas(pp.x, pp.y);
-      g.rotateCanvas(pp.a);
-      g.fillEllipse(0, 2, 6, 7);
-      for (let t = -1; t <= 1; t++) g.fillEllipse(t * 2.5, -3, 3, 3.6);
-      g.fillEllipse(0, -5.5, 2.4, 3);
-      g.restore();
-    });
+    let i = 0;
+    for (const pp of this.pawPrints) {
+      if (i < this.pawSprites.length) {
+        const sprite = this.pawSprites[i];
+        sprite.setPosition(pp.x, pp.y);
+        sprite.setRotation(pp.a + Math.PI / 2); // align along dog's heading
+        sprite.setAlpha(0.13); // match original procedural opacity
+        sprite.setScale(0.22); // approx scale to match ~8px procedural paw print
+        sprite.setTint(0x3a2a10); // tint to match original procedural brown
+        sprite.setVisible(true);
+        i++;
+      }
+    }
+    for (; i < this.pawSprites.length; i++) {
+      this.pawSprites[i].setVisible(false);
+    }
   }
 
   drawGhost() {
@@ -1113,55 +975,17 @@ class GameScene extends Phaser.Scene {
     g.restore();
   }
 
-  createModifierGraphics() {
-    this.modifierGraphics = [];
-    this.kidsGraphics = [];
+  createModifierSprites() {
+    this.modifierSprites = [];
     courseModifiers.forEach(mod => {
-      const g = this.add.graphics();
-      this.drawModifier(g, mod);
-      this.modifierGraphics.push(g);
-      if (mod.type === 'kids') {
-        const kg = this.add.graphics();
-        this.drawKids(kg, mod);
-        this.kidsGraphics.push(kg);
-      }
-    });
-  }
-
-  drawModifier(g, mod) {
-    g.clear();
-    const col = MODIFIER_COLORS[mod.type];
-    if (!col) return;
-    g.fillStyle(col.fill, mod.type === 'kids' ? 0 : 0.6);
-    g.save();
-    g.translateCanvas(mod.cx, mod.cy);
-    g.rotateCanvas(mod.angle);
-    g.fillEllipse(0, 0, mod.rx * 2, mod.ry * 2);
-    if (mod.type === 'wetGrass') {
-      g.fillStyle(0xffffff, 0.15);
-      for (let i = -mod.rx + 10; i < mod.rx; i += 18) {
-        g.fillRect(i, -mod.ry + 2, 10, mod.ry * 2 - 4);
-      }
-    }
-    g.restore();
-  }
-
-  drawKids(g, mod) {
-    g.clear();
-    const kids = [
-      { x: -12, y: -8, color: 0xff5555 },
-      { x:  12, y: -8, color: 0x55aaff },
-      { x:   0, y:  8, color: 0xffdd44 },
-    ];
-    kids.forEach(k => {
-      const kx = mod.cx + k.x;
-      const ky = mod.cy + k.y;
-      g.fillStyle(0xffccaa, 1);
-      g.fillCircle(kx, ky - 6, 3);
-      g.fillStyle(k.color, 1);
-      g.fillRect(kx - 2, ky - 2, 4, 5);
-      g.fillStyle(0x333333, 1);
-      g.fillRect(kx - 2, ky + 3, 4, 3);
+      // Map type names to texture keys
+      const keyMap = { mud: 'mud', wetGrass: 'wet_grass', kids: 'kids' };
+      const key = keyMap[mod.type] || 'mud';
+      const sprite = this.add.image(mod.cx, mod.cy, key).setDepth(5).setOrigin(0.5).setRotation(mod.angle);
+      // Scale based on rx (approximate visual sizing)
+      const scale = mod.rx / 50;
+      sprite.setScale(scale);
+      this.modifierSprites.push(sprite);
     });
   }
 
@@ -1225,17 +1049,61 @@ class GameScene extends Phaser.Scene {
       if (this.pawPrints.length > 200) this.pawPrints.shift();
     }
 
-    if (ds.boosting && Math.random() < 0.6 * dtNorm) {
+    // RUN TRAIL — thick speed-proportional dust plume behind dog
+    if (!ds.boosting && spd > 18) {
+      const intensity = Math.min(spd / 80, 1);
+      const count = Math.ceil(intensity * 8 * dtNorm);
       const angle = Math.atan2(body.velocity.y, body.velocity.x);
-      const ba = angle + Math.PI + (Math.random() - 0.5) * 0.6;
-      const bsp = 120 + Math.random() * 120;
-      this.particles.push({
-        x: this.dogBody.x, y: this.dogBody.y,
-        vx: Math.cos(ba) * bsp, vy: Math.sin(ba) * bsp,
-        life: 200, maxLife: 200,
-        color: Math.random() < 0.5 ? '#ffd200' : '#ff8c00',
-        size: 2 + Math.random() * 2
-      });
+      for (let i = 0; i < count; i++) {
+        const ta = angle + Math.PI + (Math.random() - 0.5) * 1.2;
+        const tsp = 40 + Math.random() * 120 * intensity;
+        this.particles.push({
+          x: this.dogBody.x + (Math.random()-0.5)*4,
+          y: this.dogBody.y + (Math.random()-0.5)*4,
+          vx: body.velocity.x * 0.5 + Math.cos(ta) * tsp,
+          vy: body.velocity.y * 0.5 + Math.sin(ta) * tsp,
+          life: 500 + intensity * 300, maxLife: 500 + intensity * 300,
+          color: ['#dddddd','#eeeeee','#ffffff','#cccccc','#f0f0f0'][Math.floor(Math.random()*5)],
+          size: 6 + Math.random() * 12 * intensity,
+          ptype: 'particle'
+        });
+      }
+    }
+
+    // BOOST TRAIL — massive blazing fire exhaust
+    if (ds.boosting) {
+      const angle = Math.atan2(body.velocity.y, body.velocity.x);
+      const count = Math.ceil(12 * dtNorm);
+      for (let i = 0; i < count; i++) {
+        const ba = angle + Math.PI + (Math.random() - 0.5) * 1.0;
+        const bsp = 100 + Math.random() * 350;
+        this.particles.push({
+          x: this.dogBody.x + (Math.random()-0.5)*4,
+          y: this.dogBody.y + (Math.random()-0.5)*4,
+          vx: body.velocity.x * 0.85 + Math.cos(ba) * bsp,
+          vy: body.velocity.y * 0.85 + Math.sin(ba) * bsp,
+          life: 500, maxLife: 500,
+          color: ['#ffd200','#ff8c00','#ff4500','#ff0000','#ffec8b','#ffffff'][Math.floor(Math.random()*6)],
+          size: 8 + Math.random() * 16,
+          ptype: 'trail'
+        });
+      }
+      // Sparkle accents
+      const sCount = Math.ceil(3 * dtNorm);
+      for (let i = 0; i < sCount; i++) {
+        const sa = angle + Math.PI + (Math.random() - 0.5) * 0.6;
+        const ssp = 80 + Math.random() * 160;
+        this.particles.push({
+          x: this.dogBody.x + (Math.random()-0.5)*4,
+          y: this.dogBody.y + (Math.random()-0.5)*4,
+          vx: body.velocity.x * 0.85 + Math.cos(sa) * ssp,
+          vy: body.velocity.y * 0.85 + Math.sin(sa) * ssp,
+          life: 600, maxLife: 600,
+          color: '#ffffff',
+          size: 6 + Math.random() * 10,
+          ptype: 'sparkle'
+        });
+      }
     }
 
     // Record path for ghost replay (~10 samples/sec)
@@ -1287,17 +1155,74 @@ class GameScene extends Phaser.Scene {
       }
     }
 
-    // Mud splash on entry
+    // MUD — enormous brown splatter bomb
     if (current.has('mud') && !this.prevModifiers.has('mud')) {
-      for (let i = 0; i < 12; i++) {
+      for (let i = 0; i < 80; i++) {
         const a = Math.random() * Math.PI * 2;
-        const sp = 80 + Math.random() * 120;
+        const sp = 150 + Math.random() * 400;
+        this.particles.push({
+          x: this.dogBody.x + (Math.random()-0.5)*14, y: this.dogBody.y + (Math.random()-0.5)*14,
+          vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+          life: 700, maxLife: 700,
+          color: ['#5a3a1a','#8B4513','#A0522D','#CD853F','#D2691E','#8B6914','#DAA520'][Math.floor(Math.random()*7)],
+          size: 8 + Math.random() * 18,
+          ptype: 'particle'
+        });
+      }
+      for (let i = 0; i < 30; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const sp = 50 + Math.random() * 140;
         this.particles.push({
           x: this.dogBody.x, y: this.dogBody.y,
           vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
-          life: 300, maxLife: 300,
-          color: Math.random() < 0.5 ? '#5a3a1a' : '#8B4513',
-          size: 2 + Math.random() * 3
+          life: 900, maxLife: 900,
+          color: ['#FFD700','#FFA500','#DAA520'][Math.floor(Math.random()*3)],
+          size: 6 + Math.random() * 14,
+          ptype: 'sparkle'
+        });
+      }
+    }
+
+    // WET GRASS — tidal wave splash
+    if (current.has('wetGrass') && !this.prevModifiers.has('wetGrass')) {
+      for (let i = 0; i < 70; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const sp = 180 + Math.random() * 400;
+        this.particles.push({
+          x: this.dogBody.x + (Math.random()-0.5)*12, y: this.dogBody.y + (Math.random()-0.5)*12,
+          vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+          life: 600, maxLife: 600,
+          color: ['#00BFFF','#1E90FF','#00CED1','#7FFFD4','#40E0D0','#00FFFF','#87CEEB'][Math.floor(Math.random()*7)],
+          size: 8 + Math.random() * 16,
+          ptype: 'particle'
+        });
+      }
+      for (let i = 0; i < 30; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const sp = 80 + Math.random() * 160;
+        this.particles.push({
+          x: this.dogBody.x, y: this.dogBody.y,
+          vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+          life: 800, maxLife: 800,
+          color: '#ffffff',
+          size: 6 + Math.random() * 12,
+          ptype: 'sparkle'
+        });
+      }
+    }
+
+    // KIDS — ultra rainbow neon explosion
+    if (current.has('kids') && !this.prevModifiers.has('kids')) {
+      for (let i = 0; i < 90; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const sp = 180 + Math.random() * 450;
+        this.particles.push({
+          x: this.dogBody.x + (Math.random()-0.5)*16, y: this.dogBody.y + (Math.random()-0.5)*16,
+          vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+          life: 700, maxLife: 700,
+          color: ['#FF1493','#FFD700','#FF4500','#00FF00','#00BFFF','#FF69B4','#FFA500','#ADFF2F','#FF00FF','#FFFF00'][Math.floor(Math.random()*10)],
+          size: 8 + Math.random() * 20,
+          ptype: Math.random() < 0.5 ? 'sparkle' : 'particle'
         });
       }
     }
@@ -1391,7 +1316,19 @@ class GameScene extends Phaser.Scene {
           this.insideObs.add(ob.num);
           this.faultsCount++;
           this.faultsText.setText(String(this.faultsCount));
-          this.spawnParticles(ob.cx, ob.cy, '#ff4444', 10);
+          // FAULT — angry red explosion
+          for (let fi = 0; fi < 40; fi++) {
+            const fa = Math.random() * Math.PI * 2;
+            const fsp = 150 + Math.random() * 300;
+            this.particles.push({
+              x: ob.cx + (Math.random()-0.5)*8, y: ob.cy + (Math.random()-0.5)*8,
+              vx: Math.cos(fa) * fsp, vy: Math.sin(fa) * fsp,
+              life: 500, maxLife: 500,
+              color: ['#ff0000','#ff2200','#ff4444','#cc0000','#ff6600','#ffffff'][Math.floor(Math.random()*6)],
+              size: 6 + Math.random() * 14,
+              ptype: Math.random() < 0.4 ? 'sparkle' : 'particle'
+            });
+          }
         }
       } else {
         if (wasInside) this.insideObs.delete(ob.num);
@@ -1403,8 +1340,31 @@ class GameScene extends Phaser.Scene {
     if (this.completedObs.has(ob.num)) return;
     this.completedObs.add(ob.num);
     this.currentObs++;
-    this.spawnParticles(ob.cx, ob.cy, '#ffd200', 15);
-    this.spawnParticles(ob.cx, ob.cy, '#4a4a4a', 8);
+    // CHECKPOINT — massive golden supernova
+    for (let i = 0; i < 70; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 200 + Math.random() * 450;
+      this.particles.push({
+        x: ob.cx + (Math.random()-0.5)*12, y: ob.cy + (Math.random()-0.5)*12,
+        vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+        life: 700, maxLife: 700,
+        color: ['#FFD700','#FFA500','#FFFF00','#ffffff','#FFE4B5','#FF6347','#FF4500'][Math.floor(Math.random()*7)],
+        size: 8 + Math.random() * 18,
+        ptype: 'sparkle'
+      });
+    }
+    for (let i = 0; i < 35; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 60 + Math.random() * 180;
+      this.particles.push({
+        x: ob.cx, y: ob.cy,
+        vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+        life: 900, maxLife: 900,
+        color: ['#FFD700','#FFFF00','#FFA500'][Math.floor(Math.random()*3)],
+        size: 6 + Math.random() * 14,
+        ptype: 'particle'
+      });
+    }
     this.obsCountText.setText(`${this.completedObs.size} / 16`);
 
     if (ob.num === 1 && !this.timerStarted) {

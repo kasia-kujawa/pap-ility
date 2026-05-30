@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- Dark wet base ground -->
+  <ellipse cx="100" cy="125" rx="78" ry="26" fill="#1B4D1B" stroke="#0F2F0F" stroke-width="0.8"/>
+
+  <!-- Wet sheen patches (blueish reflection) -->
+  <ellipse cx="80" cy="120" rx="28" ry="9" fill="#4682B4" opacity="0.35"/>
+  <ellipse cx="128" cy="122" rx="20" ry="7" fill="#5F9EA0" opacity="0.3"/>
+
+  <!-- Grass blades — left cluster -->
+  <polygon points="50,125 54,90 58,125" fill="#2E8B2E" stroke="#1B5E1B" stroke-width="0.6"/>
+  <polygon points="58,125 63,82 68,125" fill="#228B22" stroke="#1B5E1B" stroke-width="0.6"/>
+  <polygon points="66,125 70,95 74,125" fill="#2E8B2E" stroke="#1B5E1B" stroke-width="0.6"/>
+
+  <!-- Grass blades — center-left -->
+  <polygon points="78,125 82,75 86,125" fill="#32CD32" stroke="#1B5E1B" stroke-width="0.6"/>
+  <polygon points="86,125 90,85 94,125" fill="#228B22" stroke="#1B5E1B" stroke-width="0.6"/>
+  <polygon points="94,125 98,78 102,125" fill="#2E8B2E" stroke="#1B5E1B" stroke-width="0.6"/>
+
+  <!-- Grass blades — center -->
+  <polygon points="102,125 106,72 110,125" fill="#32CD32" stroke="#1B5E1B" stroke-width="0.6"/>
+  <polygon points="110,125 114,82 118,125" fill="#228B22" stroke="#1B5E1B" stroke-width="0.6"/>
+
+  <!-- Grass blades — center-right -->
+  <polygon points="118,125 122,76 126,125" fill="#2E8B2E" stroke="#1B5E1B" stroke-width="0.6"/>
+  <polygon points="126,125 130,85 134,125" fill="#32CD32" stroke="#1B5E1B" stroke-width="0.6"/>
+
+  <!-- Grass blades — right cluster -->
+  <polygon points="132,125 136,80 140,125" fill="#228B22" stroke="#1B5E1B" stroke-width="0.6"/>
+  <polygon points="140,125 144,88 148,125" fill="#2E8B2E" stroke="#1B5E1B" stroke-width="0.6"/>
+  <polygon points="148,125 152,92 156,125" fill="#228B22" stroke="#1B5E1B" stroke-width="0.6"/>
+
+  <!-- Water droplets on grass (blue highlights) -->
+  <circle cx="76" cy="88" r="2.5" fill="#87CEEB" opacity="0.7"/>
+  <circle cx="95" cy="78" r="2" fill="#ADD8E6" opacity="0.6"/>
+  <circle cx="108" cy="74" r="2.5" fill="#87CEEB" opacity="0.7"/>
+  <circle cx="128" cy="80" r="2" fill="#ADD8E6" opacity="0.6"/>
+  <circle cx="145" cy="86" r="2" fill="#87CEEB" opacity="0.7"/>
+
+  <!-- Surface sheen line -->
+  <ellipse cx="100" cy="118" rx="55" ry="10" fill="none" stroke="#87CEEB" stroke-width="0.7" opacity="0.3"/>
+</svg>

@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- A-Frame — two angled ramps meeting at top -->
+  <!-- Left ramp triangle (pink) -->
+  <polygon points="40,150 100,60 100,150" fill="#e85aab" stroke="#c4408a" stroke-width="0.8"/>
+
+  <!-- Right ramp triangle (lighter pink) -->
+  <polygon points="160,150 100,60 100,150" fill="#ff69b4" stroke="#cc4499" stroke-width="0.8"/>
+
+  <!-- Horizontal rung lines (white stripes on ramps) -->
+  <!-- Rungs on left ramp -->
+  <line x1="85" y1="135" x2="100" y2="135" stroke="#ffffff" stroke-width="1.5" opacity="0.3"/>
+  <line x1="70" y1="120" x2="100" y2="120" stroke="#ffffff" stroke-width="1.5" opacity="0.3"/>
+  <line x1="55" y1="105" x2="100" y2="105" stroke="#ffffff" stroke-width="1.5" opacity="0.3"/>
+  <!-- Rungs on right ramp -->
+  <line x1="115" y1="135" x2="100" y2="135" stroke="#ffffff" stroke-width="1.5" opacity="0.3"/>
+  <line x1="130" y1="120" x2="100" y2="120" stroke="#ffffff" stroke-width="1.5" opacity="0.3"/>
+  <line x1="145" y1="105" x2="100" y2="105" stroke="#ffffff" stroke-width="1.5" opacity="0.3"/>
+
+  <!-- Bottom left footing (yellow) -->
+  <rect x="40" y="142" width="16" height="10" rx="2" fill="#e6c200" stroke="#c4a800" stroke-width="0.5"/>
+  <!-- Bottom right footing (yellow) -->
+  <rect x="144" y="142" width="16" height="10" rx="2" fill="#e6c200" stroke="#c4a800" stroke-width="0.5"/>
+
+  <!-- Apex (top circle marker) -->
+  <circle cx="100" cy="60" r="6" fill="#e6c200" stroke="#c4a800" stroke-width="0.8"/>
+  <circle cx="100" cy="60" r="3" fill="#ffffff" opacity="0.6"/>
+
+  <!-- Ground base -->
+  <rect x="40" y="152" width="120" height="3" rx="1.5" fill="#4A2A10" opacity="0.2"/>
+</svg>

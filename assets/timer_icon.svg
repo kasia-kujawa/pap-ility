@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- Stopwatch / Timer Icon -->
+  <!-- Main circular body -->
+  <circle cx="100" cy="112" r="70" fill="#FFFFFF" stroke="#333333" stroke-width="10"/>
+  <!-- Top stem/button -->
+  <rect x="90" y="25" width="20" height="18" rx="4" fill="#FFFFFF" stroke="#333333" stroke-width="8"/>
+  <!-- Top button cap -->
+  <rect x="85" y="18" width="30" height="12" rx="4" fill="#FFFFFF" stroke="#333333" stroke-width="6"/>
+  <!-- Clock hands -->
+  <line x1="100" y1="112" x2="100" y2="65" stroke="#333333" stroke-width="8" stroke-linecap="round"/>
+  <line x1="100" y1="112" x2="140" y2="112" stroke="#333333" stroke-width="8" stroke-linecap="round"/>
+  <!-- Center dot -->
+  <circle cx="100" cy="112" r="10" fill="#333333"/>
+  <!-- Hour markers (12, 3, 6, 9 positions) -->
+  <circle cx="100" cy="52" r="8" fill="#333333"/>
+  <circle cx="160" cy="112" r="8" fill="#333333"/>
+  <circle cx="100" cy="172" r="8" fill="#333333"/>
+  <circle cx="40" cy="112" r="8" fill="#333333"/>
+</svg>

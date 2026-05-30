@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- Generic rounded particle — a soft filled circle with subtle stroke -->
+  <!-- Main dot -->
+  <circle cx="100" cy="100" r="28" fill="#F5F5F5" stroke="#D0D0D0" stroke-width="5"/>
+  <!-- Tiny inner highlight for depth -->
+  <circle cx="92" cy="92" r="8" fill="#FFFFFF" opacity="0.6"/>
+</svg>

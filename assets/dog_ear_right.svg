@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- Right ear: mirror of left -->
+  <g transform="translate(100,100)">
+    <!-- Ear base / outer -->
+    <path d="M 0 0
+             C 12 -2, 28 -6, 42 -16
+             C 55 -25, 65 -38, 68 -50
+             C 70 -58, 68 -64, 62 -66
+             C 55 -68, 46 -62, 38 -52
+             C 28 -40, 16 -24, 8 -12
+             C 4 -6, 2 -3, 0 0 Z"
+          fill="#D45500" stroke="#C24000" stroke-width="0.6"/>
+
+    <!-- Inner white fringe -->
+    <path d="M 0 0
+             C 10 -2, 24 -5, 36 -14
+             C 46 -22, 54 -33, 56 -43
+             C 57 -49, 56 -53, 52 -54
+             C 47 -55, 40 -50, 34 -42
+             C 25 -32, 14 -18, 7 -8
+             C 4 -4, 2 -2, 0 0 Z"
+          fill="#FFFFFF" opacity="0.9"/>
+
+    <!-- Feathering lines -->
+    <path d="M 52 -54 L 58 -62" stroke="#D45500" stroke-width="0.5" opacity="0.5"/>
+    <path d="M 40 -46 L 45 -55" stroke="#D45500" stroke-width="0.5" opacity="0.5"/>
+    <path d="M 28 -36 L 32 -44" stroke="#D45500" stroke-width="0.5" opacity="0.5"/>
+  </g>
+</svg>

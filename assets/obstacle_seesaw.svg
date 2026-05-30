@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- Seesaw — plank balanced on a fulcrum -->
+  <!-- Ground shadow/base -->
+  <rect x="60" y="150" width="80" height="3" rx="1.5" fill="#4A2A10" opacity="0.2"/>
+
+  <!-- Fulcrum (triangle base) -->
+  <polygon points="88,150 112,150 100,138" fill="#4a3520" stroke="#2a1508" stroke-width="0.8"/>
+
+  <!-- Pivot circle at center -->
+  <circle cx="100" cy="138" r="6" fill="#333333" stroke="#1a1a1a" stroke-width="0.5"/>
+  <circle cx="100" cy="138" r="3" fill="#555555"/>
+
+  <!-- Main plank (teal) -->
+  <rect x="40" y="88" width="120" height="14" rx="3" fill="#48D1CC" stroke="#2a9e9a" stroke-width="0.8"/>
+
+  <!-- Top surface highlight -->
+  <rect x="40" y="88" width="120" height="4" rx="2" fill="#ffffff" opacity="0.3"/>
+
+  <!-- Left end cap (yellow footing) -->
+  <rect x="40" y="88" width="16" height="14" rx="2" fill="#e6c200" stroke="#c4a800" stroke-width="0.5"/>
+  <!-- Right end cap (yellow footing) -->
+  <rect x="144" y="88" width="16" height="14" rx="2" fill="#e6c200" stroke="#c4a800" stroke-width="0.5"/>
+
+  <!-- Center plank detail -->
+  <rect x="40" y="92" width="120" height="1" fill="#ffffff" opacity="0.1"/>
+</svg>

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- 4-pointed sparkle / star burst -->
+  <!-- Center at 100,100, 4-pointed star with thick arms -->
+  <path d="M100 20 L108 85 L100 92 L92 85 Z" fill="#FFFDE7" stroke="#E0E0E0" stroke-width="3"/>
+  <path d="M180 100 L115 108 L108 100 L115 92 Z" fill="#FFFDE7" stroke="#E0E0E0" stroke-width="3"/>
+  <path d="M100 180 L92 115 L100 108 L108 115 Z" fill="#FFFDE7" stroke="#E0E0E0" stroke-width="3"/>
+  <path d="M20 100 L85 92 L92 100 L85 108 Z" fill="#FFFDE7" stroke="#E0E0E0" stroke-width="3"/>
+  <!-- Center diamond -->
+  <path d="M100 70 L130 100 L100 130 L70 100 Z" fill="#FFFDE7" stroke="#E0E0E0" stroke-width="3"/>
+  <!-- Cross lines for extra sparkle feel -->
+  <line x1="100" y1="20" x2="100" y2="70" stroke="#E0E0E0" stroke-width="2"/>
+  <line x1="180" y1="100" x2="130" y2="100" stroke="#E0E0E0" stroke-width="2"/>
+  <line x1="100" y1="180" x2="100" y2="130" stroke="#E0E0E0" stroke-width="2"/>
+  <line x1="20" y1="100" x2="70" y2="100" stroke="#E0E0E0" stroke-width="2"/>
+</svg>

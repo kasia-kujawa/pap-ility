@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- Warning Triangle / Fault Icon -->
+  <!-- Outer triangle shape -->
+  <path d="M100 25 L175 165 L25 165 Z"
+        fill="#FFFFFF" stroke="#E74C3C" stroke-width="10" stroke-linejoin="round"/>
+  <!-- Inner filled triangle -->
+  <path d="M100 45 L160 155 L40 155 Z"
+        fill="#E74C3C"/>
+  <!-- Exclamation mark -->
+  <rect x="90" y="70" width="20" height="50" rx="4" fill="#FFFFFF"/>
+  <circle cx="100" cy="135" r="12" fill="#FFFFFF"/>
+</svg>

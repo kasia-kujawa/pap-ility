@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- C-shaped curved tunnel (half-loop) -->
+  <!-- Center dot (reference) -->
+  <circle cx="100" cy="100" r="3" fill="#4A2A10" opacity="0.3"/>
+
+  <!-- Outer ring (orange) -->
+  <path d="M 100 38 A 62 62 0 0 1 162 100" fill="none" stroke="#f5a623" stroke-width="26" stroke-linecap="butt"/>
+  <!-- Inner ring (darker) -->
+  <path d="M 100 38 A 62 62 0 0 1 162 100" fill="none" stroke="#c47800" stroke-width="16" stroke-linecap="butt"/>
+  <!-- Tunnel bore (inner dark) -->
+  <path d="M 100 38 A 62 62 0 0 1 162 100" fill="none" stroke="#8B5A2B" stroke-width="10" stroke-linecap="butt"/>
+
+  <!-- Surface lines (fabric segments) -->
+  <path d="M 100 51 A 49 49 0 0 1 149 100" fill="none" stroke="#ffffff" stroke-width="1.5" opacity="0.4"/>
+  <path d="M 100 60 A 40 40 0 0 1 140 100" fill="none" stroke="#ffffff" stroke-width="1.5" opacity="0.4"/>
+  <path d="M 100 69 A 31 31 0 0 1 131 100" fill="none" stroke="#ffffff" stroke-width="1.5" opacity="0.4"/>
+
+  <!-- End opening left -->
+  <ellipse cx="100" cy="38" rx="8" ry="13" fill="#c47800" stroke="#8B5A00" stroke-width="0.5" transform="rotate(-20, 100, 38)"/>
+  <ellipse cx="100" cy="38" rx="5" ry="9" fill="#8B5A00"/>
+
+  <!-- End opening right -->
+  <ellipse cx="162" cy="100" rx="8" ry="13" fill="#c47800" stroke="#8B5A00" stroke-width="0.5" transform="rotate(70, 162, 100)"/>
+  <ellipse cx="162" cy="100" rx="5" ry="9" fill="#8B5A00"/>
+
+  <!-- Subtle outer highlight -->
+  <path d="M 100 38 A 62 62 0 0 1 162 100" fill="none" stroke="#ffffff" stroke-width="1" opacity="0.2"/>
+</svg>

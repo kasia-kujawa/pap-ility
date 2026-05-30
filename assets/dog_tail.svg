@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- Tail: curled fluffy plume over the back -->
+  <g transform="translate(100,100)">
+    <!-- Tail base -->
+    <ellipse cx="0" cy="2" rx="10" ry="6" fill="#FFFFFF" stroke="#E5E0DA" stroke-width="0.5"/>
+
+    <!-- Main plume: curled sc curve, sitting over the back -->
+    <path d="M -2 0
+             C -5 -5, -8 -15, -6 -25
+             C -4 -35, 2 -42, 8 -46
+             C 16 -50, 25 -48, 30 -42
+             C 34 -36, 34 -28, 28 -22
+             C 22 -16, 12 -14, 8 -12
+             C 4 -10, 1 -5, 0 0 Z"
+          fill="#FFFFFF" stroke="#E5E0DA" stroke-width="0.7"/>
+
+    <!-- Orange/warm tail tip -->
+    <path d="M 18 -46
+             C 24 -48, 28 -46, 30 -42
+             C 32 -38, 30 -32, 26 -28
+             C 22 -24, 16 -26, 14 -30
+             C 12 -34, 14 -42, 18 -46 Z"
+          fill="#D45500" opacity="0.75"/>
+
+    <!-- Second tail plume layer for fluffiness -->
+    <ellipse cx="4" cy="-18" rx="14" ry="10" fill="#FFFFFF" opacity="0.7" transform="rotate(-15, 4, -18)"/>
+
+    <!-- Feather texture lines -->
+    <path d="M -4 -20 Q 6 -30 16 -24" stroke="#E5E0DA" stroke-width="0.5" fill="none"/>
+    <path d="M 0 -12 Q 10 -22 20 -16" stroke="#E5E0DA" stroke-width="0.4" fill="none"/>
+    <path d="M -2 -26 Q 8 -36 14 -30" stroke="#E5E0DA" stroke-width="0.4" fill="none"/>
+  </g>
+</svg>

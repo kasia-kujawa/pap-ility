@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- Lightning Bolt / Boost Icon -->
+  <!-- Main bolt shape - jagged lightning -->
+  <path d="M115 20
+           L55 95
+           L95 95
+           L75 180
+           L155 85
+           L105 85
+           L115 20 Z"
+        fill="#FFD700" stroke="#CC8400" stroke-width="8" stroke-linejoin="round"/>
+  <!-- Inner highlight for energy effect -->
+  <path d="M105 40
+           L70 90
+           L95 90
+           L82 145
+           L115 90
+           L100 90
+           L105 40 Z"
+        fill="#FFEC80" opacity="0.6"/>
+</svg>
