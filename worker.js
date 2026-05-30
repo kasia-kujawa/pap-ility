@@ -185,20 +185,36 @@ export default {
         const inserted = await insertResp.json();
 
         // Calculate rank: count entries that are strictly better
-        // (fewer faults) OR (same faults but faster time)
-        const countUrl = `${env.SUPABASE_URL}/rest/v1/leaderboard?select=id&or=(faults.lt.${faults},and(faults.eq.${faults},time.lt.${time}))&head=true&count=exact`;
-        const countResp = await fetch(countUrl, {
-          headers: {
-            'apikey': env.SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${env.SUPABASE_ANON_KEY}`,
-          },
-        });
+        // (fewer faults) OR (same faults but faster time) — two queries to avoid PostgREST or/and parsing bug
+        const countHeaders = {
+          'apikey': env.SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${env.SUPABASE_ANON_KEY}`,
+          'Prefer': 'count=exact',
+        };
+        const countFewerFaults = fetch(
+          `${env.SUPABASE_URL}/rest/v1/leaderboard?select=id&faults=lt.${faults}`,
+          { method: 'HEAD', headers: countHeaders }
+        );
+        const countSameFaultsFaster = fetch(
+          `${env.SUPABASE_URL}/rest/v1/leaderboard?select=id&faults=eq.${faults}&time=lt.${time}`,
+          { method: 'HEAD', headers: countHeaders }
+        );
 
         let rank = null;
-        if (countResp.ok) {
-          const contentRange = countResp.headers.get('Content-Range'); // "0-0/123"
+        const [respFewer, respSame] = await Promise.all([countFewerFaults, countSameFaultsFaster]);
+
+        const parseCount = (resp) => {
+          if (!resp.ok) return null;
+          const contentRange = resp.headers.get('Content-Range');
           const match = contentRange?.match(/\/(\d+)$/);
-          rank = match ? parseInt(match[1], 10) + 1 : null;
+          return match ? parseInt(match[1], 10) : null;
+        };
+
+        const countFewer = parseCount(respFewer);
+        const countSame = parseCount(respSame);
+
+        if (countFewer !== null && countSame !== null) {
+          rank = countFewer + countSame + 1;
         }
 
         return new Response(JSON.stringify({ ok: true, rank }), {
