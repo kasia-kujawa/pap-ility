@@ -55,15 +55,18 @@ export default {
     const isLocalhost = requestOrigin.startsWith('http://localhost:') || requestOrigin.startsWith('https://localhost:');
     const isAllowed = isLocalhost || requestOrigin === productionOrigin;
 
-    if (!isAllowed) {
-      return new Response('Origin not allowed', { status: 403 });
-    }
-
     const corsHeaders = {
-      'Access-Control-Allow-Origin': requestOrigin,
+      'Access-Control-Allow-Origin': requestOrigin || productionOrigin,
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
     };
+
+    if (!isAllowed) {
+      return new Response(JSON.stringify({ ok: false, error: 'Origin not allowed', expected: productionOrigin, got: requestOrigin }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: corsHeaders });
